@@ -1,6 +1,6 @@
 package compiler
 
-import "github.com/kyleconroy/sqlc/internal/sql/ast"
+import "github.com/ujunglangit-id/sqlc/internal/sql/ast"
 
 type Table struct {
 	Rel     *ast.TableName

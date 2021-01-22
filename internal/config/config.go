@@ -11,7 +11,7 @@ import (
 
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/kyleconroy/sqlc/internal/core"
+	"github.com/ujunglangit-id/sqlc/internal/core"
 )
 
 const errMessageNoVersion = `The configuration file must have a version number.

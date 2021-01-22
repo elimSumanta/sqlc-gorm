@@ -34,7 +34,7 @@ func main() {
 	}
 
 	if *docker {
-		x := "-extldflags \"-static\" -X github.com/kyleconroy/sqlc/internal/cmd.version=" + version
+		x := "-extldflags \"-static\" -X github.com/ujunglangit-id/sqlc/internal/cmd.version=" + version
 		args := []string{
 			"build",
 			"-a",
@@ -77,7 +77,7 @@ func main() {
 		args = append(args, "--draft")
 	}
 
-	x := "-X github.com/kyleconroy/sqlc/internal/cmd.version=" + version
+	x := "-X github.com/ujunglangit-id/sqlc/internal/cmd.version=" + version
 	args = append(args, []string{
 		"--platforms", flag.Arg(0),
 		"--app", "app_i4iCp1SuYfZ",

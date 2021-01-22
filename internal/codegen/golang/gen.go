@@ -8,9 +8,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/kyleconroy/sqlc/internal/codegen"
-	"github.com/kyleconroy/sqlc/internal/compiler"
-	"github.com/kyleconroy/sqlc/internal/config"
+	"github.com/ujunglangit-id/sqlc/internal/codegen"
+	"github.com/ujunglangit-id/sqlc/internal/compiler"
+	"github.com/ujunglangit-id/sqlc/internal/config"
 )
 
 type Generateable interface {
@@ -209,7 +209,9 @@ func (e *{{.Name}}) Scan(src interface{}) error {
 
 {{range .Structs}}
 {{if .Comment}}{{comment .Comment}}{{end}}
-type {{.Name}} struct { {{- range .Fields}}
+type {{.Name}} struct { 
+  tableName      struct{} {{$.Q}}pg:{{.Name}},alias:n{{$.Q}}
+  {{- range .Fields}}
   {{- if .Comment}}
   {{comment .Comment}}{{else}}
   {{- end}}

@@ -1,10 +1,11 @@
 package golang
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/kyleconroy/sqlc/internal/config"
-	"github.com/kyleconroy/sqlc/internal/core"
+	"github.com/ujunglangit-id/sqlc/internal/config"
+	"github.com/ujunglangit-id/sqlc/internal/core"
 )
 
 type Struct struct {
@@ -26,5 +27,6 @@ func StructName(name string, settings config.CombinedSettings) string {
 			out += strings.Title(p)
 		}
 	}
+	fmt.Printf("out : %s\n", out)
 	return out
 }

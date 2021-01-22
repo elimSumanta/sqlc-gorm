@@ -3,8 +3,8 @@ package sqlite
 import (
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 
-	"github.com/kyleconroy/sqlc/internal/engine/sqlite/parser"
-	"github.com/kyleconroy/sqlc/internal/sql/ast"
+	"github.com/ujunglangit-id/sqlc/internal/engine/sqlite/parser"
+	"github.com/ujunglangit-id/sqlc/internal/sql/ast"
 )
 
 type node interface {

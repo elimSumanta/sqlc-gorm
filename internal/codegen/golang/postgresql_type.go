@@ -3,15 +3,15 @@ package golang
 import (
 	"log"
 
-	"github.com/kyleconroy/sqlc/internal/compiler"
-	"github.com/kyleconroy/sqlc/internal/config"
-	"github.com/kyleconroy/sqlc/internal/debug"
-	"github.com/kyleconroy/sqlc/internal/sql/catalog"
+	"github.com/ujunglangit-id/sqlc/internal/compiler"
+	"github.com/ujunglangit-id/sqlc/internal/config"
+	"github.com/ujunglangit-id/sqlc/internal/debug"
+	"github.com/ujunglangit-id/sqlc/internal/sql/catalog"
 )
 
 func postgresType(r *compiler.Result, col *compiler.Column, settings config.CombinedSettings) string {
 	columnType := col.DataType
-	notNull := col.NotNull || col.IsArray
+	notNull := true //col.NotNull || col.IsArray
 
 	switch columnType {
 	case "serial", "serial4", "pg_catalog.serial4":

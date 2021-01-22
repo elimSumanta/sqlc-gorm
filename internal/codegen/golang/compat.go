@@ -1,8 +1,8 @@
 package golang
 
 import (
-	"github.com/kyleconroy/sqlc/internal/core"
-	"github.com/kyleconroy/sqlc/internal/sql/ast"
+	"github.com/ujunglangit-id/sqlc/internal/core"
+	"github.com/ujunglangit-id/sqlc/internal/sql/ast"
 )
 
 func sameTableName(n *ast.TableName, f core.FQN, defaultSchema string) bool {

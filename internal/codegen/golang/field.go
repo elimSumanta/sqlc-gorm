@@ -7,10 +7,11 @@ import (
 )
 
 type Field struct {
-	Name    string
-	Type    string
-	Tags    map[string]string
-	Comment string
+	Name      string
+	NameLower string
+	Type      string
+	Tags      map[string]string
+	Comment   string
 }
 
 func (gf Field) Tag() string {

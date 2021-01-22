@@ -1,9 +1,8 @@
 package main
 
 import (
+	"github.com/ujunglangit-id/sqlc/internal/cmd"
 	"os"
-
-	"github.com/kyleconroy/sqlc/internal/cmd"
 )
 
 func main() {

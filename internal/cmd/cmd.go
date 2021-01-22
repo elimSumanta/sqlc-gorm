@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/kyleconroy/sqlc/internal/config"
+	"github.com/ujunglangit-id/sqlc/internal/config"
 )
 
 // Do runs the command logic.
