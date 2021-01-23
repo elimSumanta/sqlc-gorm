@@ -115,6 +115,8 @@ func (c *V1GenerateSettings) Translate() Config {
 					Package:             pkg.Name,
 					Out:                 pkg.Path,
 					Overrides:           pkg.Overrides,
+					ProjectPath:         pkg.ProjectPath,
+					FullPath:            pkg.FullPath,
 				},
 			},
 		})

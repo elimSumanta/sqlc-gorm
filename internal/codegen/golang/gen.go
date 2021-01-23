@@ -455,7 +455,7 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 	//if err := execute("/", "interface.go", "ifaceFile"); err != nil {
 	//	return nil, err
 	//}
-	if err := execute("/", "repoImpl.go", "repoImplFile"); err != nil {
+	if err := execute("entity", "repoImpl.go", "repoImplFile"); err != nil {
 		return nil, err
 	}
 	//if golang.EmitInterface {

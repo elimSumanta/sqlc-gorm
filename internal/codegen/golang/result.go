@@ -52,6 +52,7 @@ func buildEnums(r *compiler.Result, settings config.CombinedSettings) []Enum {
 
 func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct {
 	var structs []Struct
+	//fmt.Printf("common setting : %+v\n\n", settings)
 	for _, schema := range r.Catalog.Schemas {
 		if schema.Name == "pg_catalog" {
 			continue
@@ -86,7 +87,7 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 					Tags:    tags,
 					Comment: column.Comment,
 				})
-				s.ProjectPath = "bitbucket.org/samsung-workspace/api-esmart"
+				s.ProjectPath = settings.Go.ProjectPath
 			}
 			structs = append(structs, s)
 		}
