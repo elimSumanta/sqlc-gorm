@@ -1,7 +1,6 @@
 package golang
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/ujunglangit-id/sqlc/internal/config"
@@ -9,10 +8,11 @@ import (
 )
 
 type Struct struct {
-	Table   core.FQN
-	Name    string
-	Fields  []Field
-	Comment string
+	Table       core.FQN
+	ProjectPath string
+	Name        string
+	Fields      []Field
+	Comment     string
 }
 
 func StructName(name string, settings config.CombinedSettings) string {
@@ -27,6 +27,5 @@ func StructName(name string, settings config.CombinedSettings) string {
 			out += strings.Title(p)
 		}
 	}
-	fmt.Printf("out : %s\n", out)
 	return out
 }

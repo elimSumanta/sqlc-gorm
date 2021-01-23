@@ -86,6 +86,7 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 					Tags:    tags,
 					Comment: column.Comment,
 				})
+				s.ProjectPath = "bitbucket.org/samsung-workspace/api-esmart"
 			}
 			structs = append(structs, s)
 		}
@@ -260,6 +261,9 @@ func columnsToStruct(r *compiler.Result, name string, columns []goColumn, settin
 		}
 		if settings.Go.EmitJSONTags {
 			tags["json:"] = tagName
+		}
+		if settings.Go.EmitFormTags {
+			tags["form:"] = tagName
 		}
 		gs.Fields = append(gs.Fields, Field{
 			Name: fieldName,

@@ -112,6 +112,7 @@ type SQLGo struct {
 	EmitInterface       bool              `json:"emit_interface" yaml:"emit_interface"`
 	EmitJSONTags        bool              `json:"emit_json_tags" yaml:"emit_json_tags"`
 	EmitDBTags          bool              `json:"emit_db_tags" yaml:"emit_db_tags"`
+	EmitFormTags        bool              `json:"emit_form_tags" yaml:"emit_form_tags"`
 	EmitPreparedQueries bool              `json:"emit_prepared_queries" yaml:"emit_prepared_queries"`
 	EmitExactTableNames bool              `json:"emit_exact_table_names,omitempty" yaml:"emit_exact_table_names"`
 	EmitEmptySlices     bool              `json:"emit_empty_slices,omitempty" yaml:"emit_empty_slices"`
