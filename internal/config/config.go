@@ -121,6 +121,10 @@ type SQLGo struct {
 	Overrides           []Override        `json:"overrides,omitempty" yaml:"overrides"`
 	Rename              map[string]string `json:"rename,omitempty" yaml:"rename"`
 	ProjectPath         string            `json:"project_path,omitempty" yaml:"project_path"`
+	GenerateModel       bool              `json:"generate_model" yaml:"generate_model"`
+	GenerateUsecase     bool              `json:"generate_delivery" yaml:"generate_delivery"`
+	GenerateRepo        bool              `json:"generate_repo" yaml:"generate_repo"`
+	GenerateDelivery    bool              `json:"generate_usecase" yaml:"generate_usecase"`
 }
 
 type SQLKotlin struct {

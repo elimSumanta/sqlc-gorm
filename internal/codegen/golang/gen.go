@@ -57,6 +57,11 @@ type tmplCtx struct {
 	IDType         string
 	ImportList     map[string]string
 	StructNameList []string
+	//generator param
+	GenerateModel    bool
+	GenerateUsecase  bool
+	GenerateRepo     bool
+	GenerateDelivery bool
 }
 
 func (t *tmplCtx) OutputQuery(sourceName string) bool {
@@ -95,63 +100,71 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 	output := map[string]string{}
 
 	//---------------------- init delivery folder -----------------//
-	//prepare repository folder
-	targetApiPath, targetRootApi, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
-		0: "delivery",
-		1: "api",
-	})
-	if err != nil {
-		fmt.Printf("failed create delivery folder, err : %+v \n", err)
+	if golang.GenerateDelivery {
+		//prepare repository folder
+		targetApiPath, targetRootApi, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
+			0: "delivery",
+			1: "api",
+		})
+		if err != nil {
+			fmt.Printf("failed create delivery folder, err : %+v \n", err)
+		}
+		//prepare repo util folder
+		err = makeDirIfNotExists(targetRootApi + "/util")
+		if err != nil {
+			fmt.Printf("failed create target delivery util folder, err : %+v \n", err)
+		}
+		fmt.Println("done create delivery folder")
 	}
-	//prepare repo util folder
-	err = makeDirIfNotExists(targetRootApi + "/util")
-	if err != nil {
-		fmt.Printf("failed create target delivery util folder, err : %+v \n", err)
-	}
-	fmt.Println("done create delivery folder")
 	//---------------------- eof init delivery folder -----------------//
 
 	//---------------------- init repo folder -----------------//
-	//prepare repository folder
-	targetRepoPath, targetRootPath, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
-		0: "repository",
-		1: "postgre",
-	})
-	if err != nil {
-		fmt.Printf("failed create repo folder, err : %+v \n", err)
+	if golang.GenerateRepo {
+		//prepare repository folder
+		targetRepoPath, targetRootPath, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
+			0: "repository",
+			1: "postgre",
+		})
+		if err != nil {
+			fmt.Printf("failed create repo folder, err : %+v \n", err)
+		}
+		//prepare repo util folder
+		err = makeDirIfNotExists(targetRootPath + "/util")
+		if err != nil {
+			fmt.Printf("failed create target repo util folder, err : %+v \n", err)
+		}
+		fmt.Println("done create repo folder")
 	}
-	//prepare repo util folder
-	err = makeDirIfNotExists(targetRootPath + "/util")
-	if err != nil {
-		fmt.Printf("failed create target repo util folder, err : %+v \n", err)
-	}
-	fmt.Println("done create repo folder")
 	//---------------------- eof init repo folder -----------------//
 
 	//---------------------- init usecase folder -----------------//
-	//prepare usecase folder
-	err = makeDirIfNotExists(golang.Out + "/usecase")
-	if err != nil {
-		fmt.Printf("failed create target usecase folder, err : %+v \n", err)
+	if golang.GenerateUsecase {
+		//prepare usecase folder
+		err = makeDirIfNotExists(golang.Out + "/usecase")
+		if err != nil {
+			fmt.Printf("failed create target usecase folder, err : %+v \n", err)
+		}
+		//prepare usecase util folder
+		err = makeDirIfNotExists(golang.Out + "/usecase/util")
+		if err != nil {
+			fmt.Printf("failed create target usecase util folder, err : %+v \n", err)
+		}
+		fmt.Println("done create usecase folder")
 	}
-	//prepare usecase util folder
-	err = makeDirIfNotExists(golang.Out + "/usecase/util")
-	if err != nil {
-		fmt.Printf("failed create target usecase util folder, err : %+v \n", err)
-	}
-	fmt.Println("done create usecase folder")
 	//---------------------- eof init usecase folder -----------------//
 
 	//---------------------- init model folder -----------------//
-	targetModelpath, _, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
-		0: "model",
-		1: "types",
-	})
+	if golang.GenerateModel {
+		targetModelpath, _, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
+			0: "model",
+			1: "types",
+		})
 
-	if err != nil {
-		fmt.Printf("failed create model folder, err : %+v \n\n", err)
+		if err != nil {
+			fmt.Printf("failed create model folder, err : %+v \n\n", err)
+		}
+		fmt.Println("done create model folder")
 	}
-	fmt.Println("done create model folder")
 	//---------------------- eof init model folder -----------------//
 
 	tmpl := template.Must(template.New("table").Funcs(funcMap).Parse(templateEsmart))
@@ -319,34 +332,41 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 			})
 			return nil
 		}
-
-		//generate delivery API file
-		if err := executeAPI("router.go", "deliveryRouter"); err != nil {
-			return nil, err
-		}
-		if err := executeAPI("handler.go", "deliveryHandler"); err != nil {
-			return nil, err
-		}
-
-		//generate repository file
-		if err := executeRepo(false, v.Name+"Repository.go", "repoInterfaceFile"); err != nil {
-			return nil, err
-		}
-		if err := executeRepo(true, v.Name+"RepoImpl.go", "repoImplFile"); err != nil {
-			return nil, err
+		if golang.GenerateDelivery {
+			//generate delivery API file
+			if err := executeAPI("router.go", "deliveryRouter"); err != nil {
+				return nil, err
+			}
+			if err := executeAPI("handler.go", "deliveryHandler"); err != nil {
+				return nil, err
+			}
 		}
 
-		//generate usecase file
-		if err := executeUsecase(false, v.Name+"UseCase.go", "usecaseInterface"); err != nil {
-			return nil, err
-		}
-		if err := executeUsecase(true, v.Name+"CaseImpl.go", "usecaseImpl"); err != nil {
-			return nil, err
+		if golang.GenerateRepo {
+			//generate repository file
+			if err := executeRepo(false, v.Name+"Repository.go", "repoInterfaceFile"); err != nil {
+				return nil, err
+			}
+			if err := executeRepo(true, v.Name+"RepoImpl.go", "repoImplFile"); err != nil {
+				return nil, err
+			}
 		}
 
-		//generate model file
-		if err := executeModel(v.Name+"Entity.go", "entityFile"); err != nil {
-			return nil, err
+		if golang.GenerateUsecase {
+			//generate usecase file
+			if err := executeUsecase(false, v.Name+"UseCase.go", "usecaseInterface"); err != nil {
+				return nil, err
+			}
+			if err := executeUsecase(true, v.Name+"CaseImpl.go", "usecaseImpl"); err != nil {
+				return nil, err
+			}
+		}
+
+		if golang.GenerateModel {
+			//generate model file
+			if err := executeModel(v.Name+"Entity.go", "entityFile"); err != nil {
+				return nil, err
+			}
 		}
 	}
 	//---------------------- eof init file generator -----------------//
@@ -366,6 +386,10 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 		GoQueries:           queries,
 		Enums:               enums,
 		StructNameList:      StructNameList,
+		GenerateDelivery:    golang.GenerateDelivery,
+		GenerateModel:       golang.GenerateModel,
+		GenerateRepo:        golang.GenerateRepo,
+		GenerateUsecase:     golang.GenerateUsecase,
 	}
 	//util file generator
 	executeUtilFile := func(utilPath, name, templateName string) error {
@@ -395,13 +419,25 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 		return nil
 	}
 
-	//generate repo util file
-	if err := executeUtilFile(golang.Out+"/repository/util", "init.go", "repoUtil"); err != nil {
-		return nil, err
+	if golang.GenerateRepo {
+		//generate repo util file
+		if err := executeUtilFile(golang.Out+"/repository/util", "init.go", "repoUtil"); err != nil {
+			return nil, err
+		}
 	}
-	//generate usecase util file
-	if err := executeUtilFile(golang.Out+"/usecase/util", "init.go", "usecaseUtil"); err != nil {
-		return nil, err
+
+	if golang.GenerateUsecase {
+		//generate usecase util file
+		if err := executeUtilFile(golang.Out+"/usecase/util", "init.go", "usecaseUtil"); err != nil {
+			return nil, err
+		}
+	}
+
+	if golang.GenerateDelivery {
+		//generate usecase util api
+		if err := executeUtilFile(golang.Out+"/delivery/util", "init.go", "deliveryUtil"); err != nil {
+			return nil, err
+		}
 	}
 
 	return

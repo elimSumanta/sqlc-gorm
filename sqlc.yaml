@@ -1,0 +1,18 @@
+version: "1"
+packages:
+  - name: "db"
+    path: "output"
+    project_path: "bitbucket.org/samsung-workspace/api-esmart"
+    queries: "./schema/query.sql"
+    schema: "./schema/esmart/esmart_sesdb_schema_only.sql"
+    engine: "postgresql"
+    emit_json_tags: true
+    emit_form_tags: true
+    emit_prepared_queries: true
+    emit_interface: false
+    emit_exact_table_names: false
+    emit_empty_slices: false
+    generate_model: true
+    generate_delivery: false
+    generate_repo: false
+    generate_usecase: false

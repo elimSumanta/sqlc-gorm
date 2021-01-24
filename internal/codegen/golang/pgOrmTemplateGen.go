@@ -389,7 +389,7 @@ import (
 )
 
 type {{.Name}}Entity struct {
-	tableName struct{} {{$.Q}}pg:{{.TableName}},alias:_{{.Name}}{{$.Q}}
+	tableName struct{} {{$.Q}}pg:"{{.TableName}}" alias:"_{{.Name}}"{{$.Q}}
 	{{- range .Fields}}
 	{{- if .Comment}}
 	{{comment .Comment}}{{else}}

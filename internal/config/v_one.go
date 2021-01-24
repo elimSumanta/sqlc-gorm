@@ -30,6 +30,10 @@ type v1PackageSettings struct {
 	EmitEmptySlices     bool       `json:"emit_empty_slices,omitempty" yaml:"emit_empty_slices"`
 	Overrides           []Override `json:"overrides" yaml:"overrides"`
 	ProjectPath         string     `json:"project_path,omitempty" yaml:"project_path"`
+	GenerateModel       bool       `json:"generate_model" yaml:"generate_model"`
+	GenerateUsecase     bool       `json:"generate_delivery" yaml:"generate_delivery"`
+	GenerateRepo        bool       `json:"generate_repo" yaml:"generate_repo"`
+	GenerateDelivery    bool       `json:"generate_usecase" yaml:"generate_usecase"`
 }
 
 func v1ParseConfig(rd io.Reader) (Config, error) {
@@ -115,6 +119,10 @@ func (c *V1GenerateSettings) Translate() Config {
 					Out:                 pkg.Path,
 					Overrides:           pkg.Overrides,
 					ProjectPath:         pkg.ProjectPath,
+					GenerateDelivery:    pkg.GenerateDelivery,
+					GenerateUsecase:     pkg.GenerateUsecase,
+					GenerateRepo:        pkg.GenerateRepo,
+					GenerateModel:       pkg.GenerateModel,
 				},
 			},
 		})
