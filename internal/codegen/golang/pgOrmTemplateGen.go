@@ -3,12 +3,229 @@ package golang
 import "fmt"
 
 var (
+	templateApiHandler = `
+{{define "deliveryHandler"}}
+package {{.Name}}
+
+import (
+	"{{.ProjectPath}}/internal/model/types"
+	"context"
+	"github.com/kataras/iris/v12"
+	"github.com/opentracing/opentracing-go"
+	log "github.com/sirupsen/logrus"
+)
+
+//GET
+func (h *ApiWrapper) GetList(ctx iris.Context) (data *types.JSONResponse, err error) {
+	span := opentracing.GlobalTracer().StartSpan("api.GetList")
+	defer span.Finish()
+	cx := opentracing.ContextWithSpan(context.Background(), span)
+	data = &types.JSONResponse{
+		ResponseHeader: types.JSONHeader{
+			Code:    200,
+		},
+	}
+	var (
+		pageListParam = types.PaginationParam{}
+		respData = types.ListResponseData{}
+	)
+	err = ctx.ReadQuery(&pageListParam)
+	if err != nil {
+		ctx.StopWithError(iris.StatusInternalServerError, err)
+		return
+	}
+	respData.Data, respData.Count, err = h.CaseWrapper.{{.Name}}UseCase.GetList(cx, pageListParam.Page, pageListParam.Limit)
+	if err != nil {
+		log.Errorf("[handler][GetList] error GetList : %+v", err)
+	}
+	data.ResponseBody = respData
+	return
+}
+{{- if .IDExists}}
+//GET
+func (h *ApiWrapper) GetByID(ctx iris.Context) (data *types.JSONResponse, err error) {
+	span := opentracing.GlobalTracer().StartSpan("api.GetList")
+	defer span.Finish()
+	cx := opentracing.ContextWithSpan(context.Background(), span)
+	data = &types.JSONResponse{
+		ResponseHeader: types.JSONHeader{
+			Code:    200,
+		},
+	}
+	var itemID {{.IDType}}
+	itemID, err = ctx.URLParam{{.IDTypeUpper}}("id")
+	if err != nil {
+		return
+	}
+	data.ResponseBody, err = h.CaseWrapper.{{.Name}}UseCase.GetByID(cx, itemID)
+	if err != nil {
+		log.Errorf("[handler][GetByID] error GetByID : %+v", err)
+	}
+	return
+}
+{{- end}}
+//POST
+func (h *ApiWrapper) Submit(ctx iris.Context) (data *types.JSONResponse, err error) {
+	span := opentracing.GlobalTracer().StartSpan("api.Submit")
+	defer span.Finish()
+	cx := opentracing.ContextWithSpan(context.Background(), span)
+	data = &types.JSONResponse{
+		ResponseHeader: types.JSONHeader{
+			Code:    200,
+		},
+	}
+	formPayload := types.{{.Name}}Entity{}
+	err = ctx.ReadForm(&formPayload)
+	if err != nil {
+		log.Errorf("[handler][Submit] error parse formPayload : %+v", err)
+		return
+	}
+	err = h.CaseWrapper.{{.Name}}UseCase.Submit(cx, formPayload)
+	if err != nil {
+		log.Errorf("[handler][Submit] error submit {{.Name}} : %+v", err)
+		return
+	}
+	data.ResponseBody = "{{.Name}} data has been submitted"
+	return
+}
+//PUT
+func (h *ApiWrapper) Update(ctx iris.Context) (data *types.JSONResponse, err error) {
+	span := opentracing.GlobalTracer().StartSpan("api.Update")
+	defer span.Finish()
+	cx := opentracing.ContextWithSpan(context.Background(), span)
+	data = &types.JSONResponse{
+		ResponseHeader: types.JSONHeader{
+			Code:    200,
+		},
+	}
+	formPayload := types.{{.Name}}Entity{}
+	err = ctx.ReadForm(&formPayload)
+	if err != nil {
+		log.Errorf("[handler][Update] error parse formPayload : %+v", err)
+		return
+	}
+	err = h.CaseWrapper.{{.Name}}UseCase.UpdateByPK(cx, formPayload)
+	if err != nil {
+		log.Errorf("[handler][Update] error update {{.Name}} : %+v", err)
+		return
+	}
+	data.ResponseBody = "{{.Name}} data has been updated"
+	return
+}
+//DELETE
+func (h *ApiWrapper) Delete(ctx iris.Context) (data *types.JSONResponse, err error) {
+	span := opentracing.GlobalTracer().StartSpan("api.Delete")
+	defer span.Finish()
+	cx := opentracing.ContextWithSpan(context.Background(), span)
+	data = &types.JSONResponse{
+		ResponseHeader: types.JSONHeader{
+			Code:    200,
+		},
+	}
+	formPayload := types.{{.Name}}Entity{}
+	err = ctx.ReadForm(&formPayload)
+	if err != nil {
+		log.Errorf("[handler][Delete] error parse formPayload : %+v", err)
+		return
+	}
+	err = h.CaseWrapper.{{.Name}}UseCase.DeleteByPK(cx, formPayload)
+	if err != nil {
+		log.Errorf("[handler][Delete] error delete {{.Name}} : %+v", err)
+		return
+	}
+	data.ResponseBody = "{{.Name}} data has been deleted"
+	return
+}
+{{end}}`
+
+	templateApiRouter = `
+{{define "deliveryRouter"}}
+package {{.Name}}
+
+import (
+	"{{.ProjectPath}}/internal/delivery/api/helper"
+	"{{.ProjectPath}}/internal/model/core"
+	"{{.ProjectPath}}/internal/usecase/util"
+)
+
+type ApiWrapper struct {
+	CaseWrapper *util.UseCaseWrapper
+	Config      *core.Config
+}
+
+func InitRoute(cfg *core.Config, middleware *helper.Middleware, caseWrapper *util.UseCaseWrapper) {
+	api := ApiWrapper{
+		CaseWrapper: caseWrapper,
+		Config:      cfg,
+	}
+	api.registerRouter(middleware)
+}
+
+func (h *ApiWrapper) registerRouter(m *helper.Middleware) {
+	m.POST("/{{.TableName}}/submit", h.Submit)
+	m.PUT("/{{.TableName}}/update", h.Update)
+	m.DELETE("/{{.TableName}}/delete", h.Delete)
+	//base_url/{{.TableName}}/list?page=0&limit=10
+	m.GET("/{{.TableName}}/list", h.GetList)
+{{- if .IDExists}}
+	//base_url/{{.TableName}}/{item_ID}
+	m.GET("/{{.TableName}}/{id}", h.GetByID)
+{{- end}}
+}
+{{end}}`
+
+	templateApiInit = `
+{{define "deliveryUtil"}}
+package delivery
+
+import (	
+	{{range .StructNameList}}{{.}}API "{{$.ProjectPath}}/internal/delivery/api/{{.}}" 
+	{{end}}	
+
+	"{{.ProjectPath}}/internal/delivery/api/helper"
+	"{{.ProjectPath}}/internal/model/core"
+	"{{.ProjectPath}}/internal/usecase/util"
+	"github.com/kataras/iris/v12"
+)
+
+func InitDeliveryAPI(cfg *core.Config, app *iris.Application, caseWrapper *util.UseCaseWrapper) {
+	middleware := helper.NewMiddleware(cfg, app)
+	{{range .StructNameList}}{{.}}API.InitRoute(cfg, middleware, caseWrapper)
+	{{end}}
+}
+{{end}}`
+
+	templateUsecaseInit = `
+{{define "usecaseUtil"}}
+package util
+
+import (
+	"{{.ProjectPath}}/internal/model/core"
+	repoUtil "{{.ProjectPath}}/internal/repository/util"
+	"{{.ProjectPath}}/internal/usecase"
+	{{range .StructNameList}}{{.}}UCase "{{$.ProjectPath}}/internal/usecase/{{.}}"
+	{{end}}	
+)
+
+type UseCaseWrapper struct {
+	{{range .StructNameList}}{{.}}UseCase usecase.{{.}}UseCase
+	{{end}}	
+}
+
+func InitUsecase(cfg *core.Config, repoWrapper *repoUtil.RepositoryWrapper) (wrapper *UseCaseWrapper, err error) {
+	return &UseCaseWrapper{
+		{{range .StructNameList}}{{.}}UseCase: {{.}}UCase.New(cfg, repoWrapper),
+		{{end}}	
+	}, nil
+}
+{{end}}`
+
 	templateUsecaseInterface = `
 {{define "usecaseInterface"}}
 package usecase
 
 import (
-	types "{{.ProjectPath}}/internal/model/types/{{.Name}}"
+	"{{.ProjectPath}}/internal/model/types"
 	"context"
 )
 
@@ -30,7 +247,7 @@ package {{.Name}}
 
 import (
 	"{{.ProjectPath}}/internal/model/core"
-	types "{{.ProjectPath}}/internal/model/types/{{.Name}}"
+	"{{.ProjectPath}}/internal/model/types"
 	"{{.ProjectPath}}/internal/repository"
 	"{{.ProjectPath}}/internal/repository/util"
 	"context"
@@ -51,7 +268,7 @@ func New(cfg *core.Config, repoWrapper *util.RepositoryWrapper) *{{.Name}}Case {
 	}
 }
 
-func (c *{{.Name}}Case) Submit(ctx context.Context, data types.{{.Name}}sEntity) (err error){
+func (c *{{.Name}}Case) Submit(ctx context.Context, data types.{{.Name}}Entity) (err error){
 	if span := opentracing.SpanFromContext(ctx); span != nil {
 		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.Submit")
 		defer span.Finish()
@@ -62,7 +279,7 @@ func (c *{{.Name}}Case) Submit(ctx context.Context, data types.{{.Name}}sEntity)
 	}
 	return
 }
-func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []*types.{{.Name}}sEntity) (err error){
+func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []*types.{{.Name}}Entity) (err error){
 	if span := opentracing.SpanFromContext(ctx); span != nil {
 		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.SubmitMultiple")
 		defer span.Finish()
@@ -77,7 +294,7 @@ func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []*types.{{.Nam
 	}
 	return
 }
-func (c *{{.Name}}Case) UpdateByPK(ctx context.Context, data types.{{.Name}}sEntity) (err error){
+func (c *{{.Name}}Case) UpdateByPK(ctx context.Context, data types.{{.Name}}Entity) (err error){
 	if span := opentracing.SpanFromContext(ctx); span != nil {
 		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.UpdateByPK")
 		defer span.Finish()
@@ -88,7 +305,7 @@ func (c *{{.Name}}Case) UpdateByPK(ctx context.Context, data types.{{.Name}}sEnt
 	}
 	return
 }
-func (c *{{.Name}}Case) DeleteByPK(ctx context.Context, data types.{{.Name}}sEntity) (err error){
+func (c *{{.Name}}Case) DeleteByPK(ctx context.Context, data types.{{.Name}}Entity) (err error){
 	if span := opentracing.SpanFromContext(ctx); span != nil {
 		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.DeleteByPK")
 		defer span.Finish()
@@ -99,7 +316,7 @@ func (c *{{.Name}}Case) DeleteByPK(ctx context.Context, data types.{{.Name}}sEnt
 	}
 	return
 }
-func (c *{{.Name}}Case) GetList(ctx context.Context, start, limit int) (data []types.{{.Name}}sEntity, count int, err error){
+func (c *{{.Name}}Case) GetList(ctx context.Context, start, limit int) (data []types.{{.Name}}Entity, count int, err error){
 	if span := opentracing.SpanFromContext(ctx); span != nil {
 		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.GetList")
 		defer span.Finish()
@@ -115,7 +332,7 @@ func (c *{{.Name}}Case) GetList(ctx context.Context, start, limit int) (data []t
 	return
 }
 {{- if .IDExists}}
-func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}sEntity, err error){
+func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}Entity, err error){
 	if span := opentracing.SpanFromContext(ctx); span != nil {
 		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.GetByID")
 		defer span.Finish()
@@ -137,14 +354,12 @@ import (
 	"{{.ProjectPath}}/internal/model/core"
 	"{{.ProjectPath}}/internal/repository"
 	"{{.ProjectPath}}/internal/repository/postgre"
-	{{range .StructNameList}}
-	{{.}}Repo "/internal/repository/postgre/{{.}}"
+	{{range .StructNameList}}{{.}}Repo "{{$.ProjectPath}}/internal/repository/postgre/{{.}}"
 	{{end}}	
 )
 
 type RepositoryWrapper struct {
-	{{range .StructNameList}}
-	Repo{{.}} repository.{{.}}Repository
+	{{range .StructNameList}}Repo{{.}} repository.{{.}}Repository
 	{{end}}	
 }
 
@@ -157,8 +372,7 @@ func InitRepo(cfg *core.Config) *RepositoryWrapper {
 	
 	//eof master & slave db init
 	return &RepositoryWrapper{
-		{{range .StructNameList}}
-		Repo{{.}}: {{.}}Repo.New{{.}}Wrapper(MasterDB, SlaveDB),
+		{{range .StructNameList}}Repo{{.}}: {{.}}Repo.New{{.}}Wrapper(MasterDB, SlaveDB),
 		{{end}}	
 	}
 }
@@ -170,13 +384,12 @@ func InitRepo(cfg *core.Config) *RepositoryWrapper {
 package types
 
 import (
-	{{range $i, $impList :=  .ImportList}}
-	"{{$impList}}"
+	{{range $i, $impList :=  .ImportList}}"{{$impList}}"
 	{{end}}
 )
 
-type {{.Name}} struct {
-	tableName struct{} {{$.Q}}pg:{{.Name}},alias:_{{.Name}}{{$.Q}}
+type {{.Name}}Entity struct {
+	tableName struct{} {{$.Q}}pg:{{.TableName}},alias:_{{.Name}}{{$.Q}}
 	{{- range .Fields}}
 	{{- if .Comment}}
 	{{comment .Comment}}{{else}}
@@ -210,7 +423,7 @@ type {{.Name}}Payload struct {
 package repository
 
 import (
-	types "{{.ProjectPath}}/internal/model/types/{{.Name}}"
+	"{{.ProjectPath}}/internal/model/types"
 	"context"
 )
 
@@ -222,7 +435,7 @@ type {{.Name}}Repository interface {
 	GetList(ctx context.Context, start, limit int) (data []types.{{.Name}}Entity, count int, err error)
 {{- if .IDExists}}
 	GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}Entity, err error)
-{{end}}
+{{- end}}
 }
 {{end}}
 
@@ -230,7 +443,7 @@ type {{.Name}}Repository interface {
 package postgre
 
 import (
-	types "{{.ProjectPath}}/internal/model/types/{{.Name}}"
+	"{{.ProjectPath}}/internal/model/types"
 	"context"
 	"github.com/go-pg/pg/v10"
 	"github.com/opentracing/opentracing-go"
@@ -325,5 +538,16 @@ func (d *{{.Name}}Data) DeleteByPK(ctx context.Context, data types.{{.Name}}Enti
 
 {{end}}`
 
-	templateEsmart = fmt.Sprintf("%s %s %s %s %s", templateRepoUtil, templateModel, templatePostgre, templateUsecaseInterface, templateUseCaseImpl)
+	templateEsmart = fmt.Sprintf(
+		"%s %s %s %s %s %s %s %s %s",
+		templateRepoUtil,
+		templateModel,
+		templatePostgre,
+		templateUsecaseInterface,
+		templateUseCaseImpl,
+		templateUsecaseInit,
+		templateApiHandler,
+		templateApiRouter,
+		templateApiInit,
+	)
 )

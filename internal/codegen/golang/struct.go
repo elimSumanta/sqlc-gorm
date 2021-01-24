@@ -11,6 +11,7 @@ type Struct struct {
 	Table       core.FQN
 	ProjectPath string
 	Name        string
+	TableName   string
 	Fields      []Field
 	Comment     string
 	IDExists    bool

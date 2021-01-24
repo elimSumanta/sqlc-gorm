@@ -8,9 +8,13 @@ import (
 	"github.com/ujunglangit-id/sqlc/internal/core"
 	"github.com/ujunglangit-id/sqlc/internal/inflection"
 	"github.com/ujunglangit-id/sqlc/internal/sql/catalog"
+	"regexp"
 	"sort"
 	"strings"
 )
+
+var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
 func buildEnums(r *compiler.Result, settings config.CombinedSettings) []Enum {
 	var enums []Enum
@@ -49,6 +53,12 @@ func buildEnums(r *compiler.Result, settings config.CombinedSettings) []Enum {
 	return enums
 }
 
+func ToSnakeCase(str string) string {
+	//snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
+	//snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ReplaceAll(strings.ToLower(str), " ", "_")
+}
+
 func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct {
 	var structs []Struct
 	//fmt.Printf("common setting : %+v\n\n", settings)
@@ -72,8 +82,11 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 				Name:       StructName(structName, settings),
 				Comment:    table.Comment,
 				ImportList: map[string]string{},
+				TableName:  table.Rel.Name,
 			}
 			for _, column := range table.Columns {
+				originalColName := column.Name
+				column.Name = ToSnakeCase(column.Name)
 				tags := map[string]string{}
 				if settings.Go.EmitDBTags {
 					tags["db:"] = column.Name
@@ -81,9 +94,9 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 				if settings.Go.EmitJSONTags {
 					tags["json:"] = column.Name
 				}
-				if settings.Go.EmitFormTags {
-					tags["form:"] = column.Name
-				}
+
+				tags["form:"] = column.Name
+				tags["pg:"] = originalColName
 				colType := goType(r, compiler.ConvertColumn(table.Rel, column), settings)
 				s.Fields = append(s.Fields, Field{
 					Name:    StructName(column.Name, settings),
