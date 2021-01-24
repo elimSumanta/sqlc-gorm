@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/ujunglangit-id/sqlc/internal/codegen/golang"
-	"github.com/ujunglangit-id/sqlc/internal/codegen/kotlin"
 	"github.com/ujunglangit-id/sqlc/internal/compiler"
 	"github.com/ujunglangit-id/sqlc/internal/config"
 	"github.com/ujunglangit-id/sqlc/internal/debug"
@@ -127,42 +126,19 @@ func Generate(e Env, dir string, stderr io.Writer) (map[string]string, error) {
 		}
 		sql.Schema = joined
 
-		joined = make([]string, 0, len(sql.Queries))
-		for _, q := range sql.Queries {
-			joined = append(joined, filepath.Join(dir, q))
-		}
-		sql.Queries = joined
-
 		var name string
 		parseOpts := opts.Parser{
 			Debug: debug,
 		}
-		if sql.Gen.Go != nil {
-			name = combo.Go.Package
-		} else if sql.Gen.Kotlin != nil {
-			if sql.Engine == config.EnginePostgreSQL {
-				parseOpts.UsePositionalParameters = true
-			}
-			name = combo.Kotlin.Package
-		}
+		name = combo.Go.Package
 
 		result, errored := parse(e, name, dir, sql.SQL, combo, parseOpts, stderr)
 		if errored {
 			break
 		}
 
-		var files map[string]string
-		var out string
-		switch {
-		case sql.Gen.Go != nil:
-			out = combo.Go.Out
-			files, err = golang.Generate(result, combo)
-		case sql.Gen.Kotlin != nil:
-			out = combo.Kotlin.Out
-			files, err = kotlin.Generate(result, combo)
-		default:
-			panic("missing language backend")
-		}
+		var targetFiles = []*golang.TargetFiles{}
+		targetFiles, err = golang.Generate(result, combo)
 
 		if err != nil {
 			fmt.Fprintf(stderr, "# package %s\n", name)
@@ -170,9 +146,13 @@ func Generate(e Env, dir string, stderr io.Writer) (map[string]string, error) {
 			errored = true
 			continue
 		}
-		for n, source := range files {
-			filename := filepath.Join(dir, out, n)
-			output[filename] = source
+		total := len(targetFiles)
+		executed := 0
+		for _, fileData := range targetFiles {
+			executed++
+			filename := filepath.Join(fileData.FilePath, fileData.FileName)
+			output[filename] = fileData.FileBody
+			fmt.Printf("done generate %d of %d files, : %s\n", executed, total, fileData.FileName)
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
+	"os"
 	"strings"
 	"text/template"
 
@@ -17,6 +18,12 @@ type Generateable interface {
 	Structs(settings config.CombinedSettings) []Struct
 	GoQueries(settings config.CombinedSettings) []Query
 	Enums(settings config.CombinedSettings) []Enum
+}
+
+type TargetFiles struct {
+	FilePath string
+	FileBody string
+	FileName string
 }
 
 var xtemplateSet = `
@@ -353,12 +360,13 @@ func (q *Queries) {{.MethodName}}(ctx context.Context, {{.Arg.Pair}}) (sql.Resul
 `
 
 type tmplCtx struct {
-	Q         string
-	Package   string
-	Enums     []Enum
-	Structs   []Struct
-	GoQueries []Query
-	Settings  config.Config
+	Q          string
+	Package    string
+	Enums      []Enum
+	Structs    []Struct
+	StructData Struct
+	GoQueries  []Query
+	Settings   config.Config
 
 	// TODO: Race conditions
 	SourceName string
@@ -375,14 +383,20 @@ func (t *tmplCtx) OutputQuery(sourceName string) bool {
 	return t.SourceName == sourceName
 }
 
-func Generate(r *compiler.Result, settings config.CombinedSettings) (map[string]string, error) {
+//func Generate(r *compiler.Result, settings config.CombinedSettings) (map[string]string, error) {
+func Generate(r *compiler.Result, settings config.CombinedSettings) ([]*TargetFiles, error) {
 	enums := buildEnums(r, settings)
 	structs := buildStructs(r, settings)
 	queries := buildQueries(r, settings, structs)
 	return generate(settings, enums, structs, queries)
 }
 
-func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, queries []Query) (map[string]string, error) {
+//func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, queries []Query) (map[string]string, error) {
+func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, queries []Query) (targetFile []*TargetFiles, err error) {
+	var (
+		targetRepoPath, targetModelpath string
+	)
+	targetFile = []*TargetFiles{}
 	i := &importer{
 		Settings: settings,
 		Queries:  queries,
@@ -396,67 +410,105 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 		"escape":     codegen.EscapeBacktick,
 		"imports":    i.Imports,
 	}
-
-	//tmpl := template.Must(template.New("table").Funcs(funcMap).Parse(templateModelEntity))
-	tmpl := template.Must(template.New("table").Funcs(funcMap).Parse(templateRepoImpl))
-
 	golang := settings.Go
-	tctx := tmplCtx{
-		Settings:            settings.Global,
-		EmitInterface:       golang.EmitInterface,
-		EmitJSONTags:        golang.EmitJSONTags,
-		EmitDBTags:          golang.EmitDBTags,
-		EmitFormTags:        golang.EmitFormTags,
-		EmitPreparedQueries: golang.EmitPreparedQueries,
-		EmitEmptySlices:     golang.EmitEmptySlices,
-		Q:                   "`",
-		Package:             golang.Package,
-		GoQueries:           queries,
-		Enums:               enums,
-		Structs:             structs,
-	}
-
 	output := map[string]string{}
-	execute := func(path, name, templateName string) error {
-		//if path != "/" {
-		//	if _, err := os.Stat(tctx.Structs[0].Name); os.IsNotExist(err) {
-		//		err = os.Mkdir(tctx.Structs[0].Name, os.ModeDir)
-		//		if err != nil {
-		//			fmt.Printf("err mkdir %+v\n\n", err)
-		//		}
-		//	}
-		//	path = tctx.Structs[0].Name
+
+	//prepare repository folder
+	targetRepoPath, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
+		0: "repository",
+		1: "postgre",
+	})
+	if err != nil {
+		fmt.Printf("failed create repo folder, err : %+v \n\n", err)
+	}
+	fmt.Println("done create repository folder")
+
+	//prepare model folder
+	targetModelpath, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
+		0: "model",
+		1: "types",
+	})
+
+	if err != nil {
+		fmt.Printf("failed create model folder, err : %+v \n\n", err)
+	}
+	fmt.Println("done create model folder")
+	//eof root folder
+
+	for _, v := range structs {
+		tmpl := template.Must(template.New("table").Funcs(funcMap).Parse(templateRepo))
+
+		tctx := tmplCtx{
+			Settings:            settings.Global,
+			EmitInterface:       golang.EmitInterface,
+			EmitJSONTags:        golang.EmitJSONTags,
+			EmitDBTags:          golang.EmitDBTags,
+			EmitFormTags:        golang.EmitFormTags,
+			EmitPreparedQueries: golang.EmitPreparedQueries,
+			EmitEmptySlices:     golang.EmitEmptySlices,
+			Q:                   "`",
+			Package:             golang.Package,
+			GoQueries:           queries,
+			Enums:               enums,
+			StructData:          v,
+		}
+
+		execute := func(subPath bool, name, templateName string) error {
+			targetSubpath := targetRepoPath
+			if subPath {
+				//prepare sub repo folder if not exist
+				targetSubpath = targetSubpath + "/" + v.Name
+				err = makeDirIfNotExists(targetSubpath)
+				if err != nil {
+					fmt.Printf("failed create target sub repo folder, err : %+v \n\n", err)
+				}
+				//prepare sub model folder if not exist
+				targetModelpath = targetModelpath + "/" + v.Name
+				err = makeDirIfNotExists(targetModelpath)
+				if err != nil {
+					fmt.Printf("failed create target sub model folder, err : %+v \n\n", err)
+				}
+			}
+
+			var b bytes.Buffer
+			w := bufio.NewWriter(&b)
+			tctx.SourceName = name
+			err := tmpl.ExecuteTemplate(w, templateName, &tctx)
+			w.Flush()
+			if err != nil {
+				return err
+			}
+			code, err := format.Source(b.Bytes())
+			if err != nil {
+				fmt.Println(b.String())
+				return fmt.Errorf("source error: %w", err)
+			}
+			if !strings.HasSuffix(name, ".go") {
+				name += ".go"
+			}
+
+			output[name] = string(code)
+			targetFile = append(targetFile, &TargetFiles{
+				FilePath: targetSubpath,
+				FileBody: string(code),
+				FileName: name,
+			})
+			return nil
+		}
+
+		//if err := execute("model", "entity.go", "entityFile"); err != nil {
+		//	return nil, err
+		//}
+		//if err := execute("/", "interface.go", "ifaceFile"); err != nil {
+		//	return nil, err
 		//}
 
-		var b bytes.Buffer
-		w := bufio.NewWriter(&b)
-		tctx.SourceName = name
-		err := tmpl.ExecuteTemplate(w, templateName, &tctx)
-		w.Flush()
-		if err != nil {
-			return err
+		if err := execute(false, v.Name+"Repository.go", "repoInterfaceFile"); err != nil {
+			return nil, err
 		}
-		code, err := format.Source(b.Bytes())
-		if err != nil {
-			fmt.Println(b.String())
-			return fmt.Errorf("source error: %w", err)
+		if err := execute(true, v.Name+"RepoImpl.go", "repoImplFile"); err != nil {
+			return nil, err
 		}
-		if !strings.HasSuffix(name, ".go") {
-			name += ".go"
-		}
-
-		output[name] = string(code)
-		return nil
-	}
-
-	//if err := execute("model", "entity.go", "entityFile"); err != nil {
-	//	return nil, err
-	//}
-	//if err := execute("/", "interface.go", "ifaceFile"); err != nil {
-	//	return nil, err
-	//}
-	if err := execute("entity", "repoImpl.go", "repoImplFile"); err != nil {
-		return nil, err
 	}
 	//if golang.EmitInterface {
 	//	if err := execute("querier.go", "interfaceFile"); err != nil {
@@ -474,5 +526,26 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 	//		return nil, err
 	//	}
 	//}
-	return output, nil
+	return
+}
+
+func makeMultiDirectoryIfNotExists(rootPath string, pathList map[int]string) (targetPath string, err error) {
+	//var targetpath string
+	targetPath, err = os.Getwd()
+	if err != nil {
+		return
+	}
+	targetPath = targetPath + "/" + rootPath
+	for _, v := range pathList {
+		targetPath = targetPath + "/" + v
+		err = makeDirIfNotExists(targetPath)
+	}
+	return
+}
+
+func makeDirIfNotExists(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return os.Mkdir(path, os.ModeDir|0755)
+	}
+	return nil
 }

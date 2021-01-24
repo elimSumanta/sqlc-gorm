@@ -29,7 +29,6 @@ type v1PackageSettings struct {
 	EmitExactTableNames bool       `json:"emit_exact_table_names,omitempty" yaml:"emit_exact_table_names"`
 	EmitEmptySlices     bool       `json:"emit_empty_slices,omitempty" yaml:"emit_empty_slices"`
 	Overrides           []Override `json:"overrides" yaml:"overrides"`
-	FullPath            string     `json:"full_path,omitempty" yaml:"full_path"`
 	ProjectPath         string     `json:"project_path,omitempty" yaml:"project_path"`
 }
 
@@ -116,7 +115,6 @@ func (c *V1GenerateSettings) Translate() Config {
 					Out:                 pkg.Path,
 					Overrides:           pkg.Overrides,
 					ProjectPath:         pkg.ProjectPath,
-					FullPath:            pkg.FullPath,
 				},
 			},
 		})

@@ -120,7 +120,6 @@ type SQLGo struct {
 	Out                 string            `json:"out" yaml:"out"`
 	Overrides           []Override        `json:"overrides,omitempty" yaml:"overrides"`
 	Rename              map[string]string `json:"rename,omitempty" yaml:"rename"`
-	FullPath            string            `json:"full_path,omitempty" yaml:"full_path"`
 	ProjectPath         string            `json:"project_path,omitempty" yaml:"project_path"`
 }
 
