@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"github.com/ujunglangit-id/sqlc/internal/core"
 	"go/format"
 	"os"
 	"strings"
@@ -377,6 +378,12 @@ type tmplCtx struct {
 	EmitPreparedQueries bool
 	EmitInterface       bool
 	EmitEmptySlices     bool
+	//struct field
+	Table       core.FQN
+	ProjectPath string
+	Name        string
+	Fields      []Field
+	Comment     string
 }
 
 func (t *tmplCtx) OutputQuery(sourceName string) bool {
@@ -436,7 +443,7 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 	//eof root folder
 
 	for _, v := range structs {
-		tmpl := template.Must(template.New("table").Funcs(funcMap).Parse(templateRepo))
+		tmpl := template.Must(template.New("table").Funcs(funcMap).Parse(templateModelRepo))
 
 		tctx := tmplCtx{
 			Settings:            settings.Global,
@@ -450,10 +457,15 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 			Package:             golang.Package,
 			GoQueries:           queries,
 			Enums:               enums,
-			StructData:          v,
+			Table:               v.Table,
+			ProjectPath:         v.ProjectPath,
+			Name:                v.Name,
+			Fields:              v.Fields,
+			Comment:             v.Comment,
 		}
 
-		execute := func(subPath bool, name, templateName string) error {
+		//repo file generator
+		executeRepo := func(subPath bool, name, templateName string) error {
 			targetSubpath := targetRepoPath
 			if subPath {
 				//prepare sub repo folder if not exist
@@ -462,9 +474,40 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 				if err != nil {
 					fmt.Printf("failed create target sub repo folder, err : %+v \n\n", err)
 				}
+			}
+
+			var b bytes.Buffer
+			w := bufio.NewWriter(&b)
+			tctx.SourceName = name
+			err := tmpl.ExecuteTemplate(w, templateName, &tctx)
+			w.Flush()
+			if err != nil {
+				return err
+			}
+			code, err := format.Source(b.Bytes())
+			if err != nil {
+				fmt.Println(b.String())
+				return fmt.Errorf("source error: %w", err)
+			}
+			if !strings.HasSuffix(name, ".go") {
+				name += ".go"
+			}
+
+			output[name] = string(code)
+			targetFile = append(targetFile, &TargetFiles{
+				FilePath: targetSubpath,
+				FileBody: string(code),
+				FileName: name,
+			})
+			return nil
+		}
+		//model file generator
+		executeModel := func(subPath bool, name, templateName string) error {
+			targetSubpath := targetModelpath
+			if subPath {
 				//prepare sub model folder if not exist
-				targetModelpath = targetModelpath + "/" + v.Name
-				err = makeDirIfNotExists(targetModelpath)
+				targetSubpath = targetSubpath + "/" + v.Name
+				err = makeDirIfNotExists(targetSubpath)
 				if err != nil {
 					fmt.Printf("failed create target sub model folder, err : %+v \n\n", err)
 				}
@@ -496,19 +539,22 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 			return nil
 		}
 
-		//if err := execute("model", "entity.go", "entityFile"); err != nil {
-		//	return nil, err
-		//}
-		//if err := execute("/", "interface.go", "ifaceFile"); err != nil {
-		//	return nil, err
-		//}
+		//generate repository file
+		if err := executeRepo(false, v.Name+"Repository.go", "repoInterfaceFile"); err != nil {
+			return nil, err
+		}
+		if err := executeRepo(true, v.Name+"RepoImpl.go", "repoImplFile"); err != nil {
+			return nil, err
+		}
 
-		if err := execute(false, v.Name+"Repository.go", "repoInterfaceFile"); err != nil {
+		//generate model file
+		if err := executeModel(true, "entity.go", "entityFile"); err != nil {
 			return nil, err
 		}
-		if err := execute(true, v.Name+"RepoImpl.go", "repoImplFile"); err != nil {
+		if err := executeModel(true, "payload.go", "payloadFile"); err != nil {
 			return nil, err
 		}
+
 	}
 	//if golang.EmitInterface {
 	//	if err := execute("querier.go", "interfaceFile"); err != nil {

@@ -81,6 +81,9 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 				if settings.Go.EmitJSONTags {
 					tags["json:"] = column.Name
 				}
+				//if settings.Go.EmitFormTags {
+				tags["form:"] = column.Name
+				//}
 				s.Fields = append(s.Fields, Field{
 					Name:    StructName(column.Name, settings),
 					Type:    goType(r, compiler.ConvertColumn(table.Rel, column), settings),
