@@ -13,6 +13,9 @@ type Struct struct {
 	Name        string
 	Fields      []Field
 	Comment     string
+	IDExists    bool
+	IDType      string
+	ImportList  map[string]string
 }
 
 func StructName(name string, settings config.CombinedSettings) string {

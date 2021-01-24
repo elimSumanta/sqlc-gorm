@@ -379,11 +379,15 @@ type tmplCtx struct {
 	EmitInterface       bool
 	EmitEmptySlices     bool
 	//struct field
-	Table       core.FQN
-	ProjectPath string
-	Name        string
-	Fields      []Field
-	Comment     string
+	Table          core.FQN
+	ProjectPath    string
+	Name           string
+	Fields         []Field
+	Comment        string
+	IDExists       bool
+	IDType         string
+	ImportList     map[string]string
+	StructNameList []string
 }
 
 func (t *tmplCtx) OutputQuery(sourceName string) bool {
@@ -401,7 +405,8 @@ func Generate(r *compiler.Result, settings config.CombinedSettings) ([]*TargetFi
 //func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, queries []Query) (map[string]string, error) {
 func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, queries []Query) (targetFile []*TargetFiles, err error) {
 	var (
-		targetRepoPath, targetModelpath string
+		StructNameList                                  []string
+		targetRepoPath, targetRootPath, targetModelpath string
 	)
 	targetFile = []*TargetFiles{}
 	i := &importer{
@@ -419,19 +424,39 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 	}
 	golang := settings.Go
 	output := map[string]string{}
-
+	//---------------------- init repo folder -----------------//
 	//prepare repository folder
-	targetRepoPath, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
+	targetRepoPath, targetRootPath, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
 		0: "repository",
 		1: "postgre",
 	})
 	if err != nil {
-		fmt.Printf("failed create repo folder, err : %+v \n\n", err)
+		fmt.Printf("failed create repo folder, err : %+v \n", err)
 	}
-	fmt.Println("done create repository folder")
+	//prepare repo util folder
+	err = makeDirIfNotExists(targetRootPath + "/util")
+	if err != nil {
+		fmt.Printf("failed create target repo util folder, err : %+v \n", err)
+	}
+	fmt.Println("done create repo folder")
+	//---------------------- eof init repo folder -----------------//
 
-	//prepare model folder
-	targetModelpath, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
+	//---------------------- init usecase folder -----------------//
+	//prepare usecase folder
+	err = makeDirIfNotExists(golang.Out + "/usecase")
+	if err != nil {
+		fmt.Printf("failed create target usecase folder, err : %+v \n", err)
+	}
+	//prepare usecase util folder
+	err = makeDirIfNotExists(golang.Out + "/usecase/util")
+	if err != nil {
+		fmt.Printf("failed create target usecase util folder, err : %+v \n", err)
+	}
+	fmt.Println("done create usecase folder")
+	//---------------------- eof init usecase folder -----------------//
+
+	//---------------------- init model folder -----------------//
+	targetModelpath, _, err = makeMultiDirectoryIfNotExists(golang.Out, map[int]string{
 		0: "model",
 		1: "types",
 	})
@@ -440,11 +465,11 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 		fmt.Printf("failed create model folder, err : %+v \n\n", err)
 	}
 	fmt.Println("done create model folder")
-	//eof root folder
+	//---------------------- eof init model folder -----------------//
 
+	tmpl := template.Must(template.New("table").Funcs(funcMap).Parse(templateEsmart))
 	for _, v := range structs {
-		tmpl := template.Must(template.New("table").Funcs(funcMap).Parse(templateModelRepo))
-
+		StructNameList = append(StructNameList, v.Name)
 		tctx := tmplCtx{
 			Settings:            settings.Global,
 			EmitInterface:       golang.EmitInterface,
@@ -462,6 +487,9 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 			Name:                v.Name,
 			Fields:              v.Fields,
 			Comment:             v.Comment,
+			IDExists:            v.IDExists,
+			IDType:              v.IDType,
+			ImportList:          v.ImportList,
 		}
 
 		//repo file generator
@@ -474,6 +502,8 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 				if err != nil {
 					fmt.Printf("failed create target sub repo folder, err : %+v \n\n", err)
 				}
+			} else {
+				targetSubpath = targetRootPath
 			}
 
 			var b bytes.Buffer
@@ -538,6 +568,43 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 			})
 			return nil
 		}
+		//usecase file generator
+		executeUsecase := func(subPath bool, name, templateName string) error {
+			targetPath := golang.Out + "/usecase"
+			if subPath {
+				//prepare sub repo folder if not exist
+				targetPath = targetPath + "/" + v.Name
+				err = makeDirIfNotExists(targetPath)
+				if err != nil {
+					fmt.Printf("failed create target sub usecase folder, err : %+v \n\n", err)
+				}
+			}
+
+			var b bytes.Buffer
+			w := bufio.NewWriter(&b)
+			tctx.SourceName = name
+			err := tmpl.ExecuteTemplate(w, templateName, &tctx)
+			w.Flush()
+			if err != nil {
+				return err
+			}
+			code, err := format.Source(b.Bytes())
+			if err != nil {
+				fmt.Println(b.String())
+				return fmt.Errorf("source error: %w", err)
+			}
+			if !strings.HasSuffix(name, ".go") {
+				name += ".go"
+			}
+
+			output[name] = string(code)
+			targetFile = append(targetFile, &TargetFiles{
+				FilePath: targetPath,
+				FileBody: string(code),
+				FileName: name,
+			})
+			return nil
+		}
 
 		//generate repository file
 		if err := executeRepo(false, v.Name+"Repository.go", "repoInterfaceFile"); err != nil {
@@ -547,43 +614,84 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 			return nil, err
 		}
 
+		//generate usecase file
+		if err := executeUsecase(false, v.Name+"UseCase.go", "usecaseInterface"); err != nil {
+			return nil, err
+		}
+		if err := executeUsecase(true, v.Name+"CaseImpl.go", "usecaseImpl"); err != nil {
+			return nil, err
+		}
+
 		//generate model file
 		if err := executeModel(true, "entity.go", "entityFile"); err != nil {
 			return nil, err
 		}
-		if err := executeModel(true, "payload.go", "payloadFile"); err != nil {
-			return nil, err
+	}
+
+	//generate util file
+	utilCtx := tmplCtx{
+		Settings:            settings.Global,
+		EmitInterface:       golang.EmitInterface,
+		EmitJSONTags:        golang.EmitJSONTags,
+		EmitDBTags:          golang.EmitDBTags,
+		EmitFormTags:        golang.EmitFormTags,
+		EmitPreparedQueries: golang.EmitPreparedQueries,
+		EmitEmptySlices:     golang.EmitEmptySlices,
+		Q:                   "`",
+		Package:             golang.Package,
+		ProjectPath:         golang.ProjectPath,
+		GoQueries:           queries,
+		Enums:               enums,
+		StructNameList:      StructNameList,
+	}
+	//util file generator
+	executeRepoUtilFile := func(name, templateName string) error {
+		var b bytes.Buffer
+		w := bufio.NewWriter(&b)
+		utilCtx.SourceName = name
+		err := tmpl.ExecuteTemplate(w, templateName, &utilCtx)
+		w.Flush()
+		if err != nil {
+			return err
+		}
+		code, err := format.Source(b.Bytes())
+		if err != nil {
+			fmt.Println(b.String())
+			return fmt.Errorf("source error: %w", err)
+		}
+		if !strings.HasSuffix(name, ".go") {
+			name += ".go"
 		}
 
+		output[name] = string(code)
+		targetFile = append(targetFile, &TargetFiles{
+			FilePath: targetRootPath + "/util",
+			FileBody: string(code),
+			FileName: name,
+		})
+		return nil
 	}
-	//if golang.EmitInterface {
-	//	if err := execute("querier.go", "interfaceFile"); err != nil {
-	//		return nil, err
-	//	}
-	//}
 
-	//files := map[string]struct{}{}
-	//for _, gq := range queries {
-	//	files[gq.SourceName] = struct{}{}
-	//}
+	//generate util file
+	if err := executeRepoUtilFile("init.go", "repoUtil"); err != nil {
+		return nil, err
+	}
 
-	//for source := range files {
-	//	if err := execute(source, "queryFile"); err != nil {
-	//		return nil, err
-	//	}
-	//}
 	return
 }
 
-func makeMultiDirectoryIfNotExists(rootPath string, pathList map[int]string) (targetPath string, err error) {
+func makeMultiDirectoryIfNotExists(rootPath string, pathList map[int]string) (targetPath, targetRootPath string, err error) {
 	//var targetpath string
 	targetPath, err = os.Getwd()
 	if err != nil {
 		return
 	}
 	targetPath = targetPath + "/" + rootPath
-	for _, v := range pathList {
+	for k, v := range pathList {
 		targetPath = targetPath + "/" + v
+		if k == 0 {
+			targetRootPath = targetPath
+		}
 		err = makeDirIfNotExists(targetPath)
 	}
 	return

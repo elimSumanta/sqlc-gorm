@@ -1,1 +1,3 @@
 package golang
+
+var ()

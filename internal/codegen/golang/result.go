@@ -2,15 +2,14 @@ package golang
 
 import (
 	"fmt"
-	"sort"
-	"strings"
-
 	"github.com/ujunglangit-id/sqlc/internal/codegen"
 	"github.com/ujunglangit-id/sqlc/internal/compiler"
 	"github.com/ujunglangit-id/sqlc/internal/config"
 	"github.com/ujunglangit-id/sqlc/internal/core"
 	"github.com/ujunglangit-id/sqlc/internal/inflection"
 	"github.com/ujunglangit-id/sqlc/internal/sql/catalog"
+	"sort"
+	"strings"
 )
 
 func buildEnums(r *compiler.Result, settings config.CombinedSettings) []Enum {
@@ -69,9 +68,10 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 				structName = inflection.Singular(structName)
 			}
 			s := Struct{
-				Table:   core.FQN{Schema: schema.Name, Rel: table.Rel.Name},
-				Name:    StructName(structName, settings),
-				Comment: table.Comment,
+				Table:      core.FQN{Schema: schema.Name, Rel: table.Rel.Name},
+				Name:       StructName(structName, settings),
+				Comment:    table.Comment,
+				ImportList: map[string]string{},
 			}
 			for _, column := range table.Columns {
 				tags := map[string]string{}
@@ -81,16 +81,25 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 				if settings.Go.EmitJSONTags {
 					tags["json:"] = column.Name
 				}
-				//if settings.Go.EmitFormTags {
-				tags["form:"] = column.Name
-				//}
+				if settings.Go.EmitFormTags {
+					tags["form:"] = column.Name
+				}
+				colType := goType(r, compiler.ConvertColumn(table.Rel, column), settings)
 				s.Fields = append(s.Fields, Field{
 					Name:    StructName(column.Name, settings),
-					Type:    goType(r, compiler.ConvertColumn(table.Rel, column), settings),
+					Type:    colType,
 					Tags:    tags,
 					Comment: column.Comment,
 				})
 				s.ProjectPath = settings.Go.ProjectPath
+				if column.Name == "id" || column.Name == "ID" || column.Name == "Id" {
+					s.IDExists = true
+					s.IDType = colType
+				}
+				if colType == "time.Time" {
+					s.ImportList["t"] = "time"
+				}
+
 			}
 			structs = append(structs, s)
 		}
