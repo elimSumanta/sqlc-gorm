@@ -44,7 +44,7 @@ func (h *ApiWrapper) GetList(ctx iris.Context) (data *types.JSONResponse, err er
 {{- if .IDExists}}
 //GET
 func (h *ApiWrapper) GetByID(ctx iris.Context) (data *types.JSONResponse, err error) {
-	span := opentracing.GlobalTracer().StartSpan("api.GetList")
+	span := opentracing.GlobalTracer().StartSpan("api.GetByID")
 	defer span.Finish()
 	cx := opentracing.ContextWithSpan(context.Background(), span)
 	data = &types.JSONResponse{
@@ -52,12 +52,13 @@ func (h *ApiWrapper) GetByID(ctx iris.Context) (data *types.JSONResponse, err er
 			Code:    200,
 		},
 	}
-	var itemID {{.IDType}}
-	itemID, err = ctx.URLParam{{.IDTypeUpper}}("id")
+	var itemID int
+	itemID, err = ctx.URLParamInt("id")
+
 	if err != nil {
 		return
 	}
-	data.ResponseBody, err = h.CaseWrapper.{{.Name}}UseCase.GetByID(cx, itemID)
+	data.ResponseBody, err = h.CaseWrapper.{{.Name}}UseCase.GetByID(cx, {{.IDType}}(itemID))
 	if err != nil {
 		log.Errorf("[handler][GetByID] error GetByID : %+v", err)
 	}
