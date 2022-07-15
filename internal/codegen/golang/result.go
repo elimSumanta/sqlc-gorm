@@ -109,6 +109,14 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 					s.IDExists = true
 					s.IDType = colType
 				}
+				// gorm time tracking handling
+				if column.Name == "created_at" {
+					s.CreatedAtExists = true
+				}
+				if column.Name == "updated_at" {
+					s.UpdatedAtExists = true
+				}
+
 				if colType == "time.Time" {
 					s.ImportList["t"] = "time"
 				}

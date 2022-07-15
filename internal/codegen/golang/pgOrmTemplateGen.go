@@ -391,6 +391,12 @@ type {{.Name}}Entity struct {
 	{{- end}}
 	{{.Name}} {{.Type}} {{$.Q}}{{.Tag}}{{$.Q}}
 	{{- end}}
+	{{- if .NoCreatedAt}}
+	CreatedAt time.Time {{$.Q}}form:"-" gorm:"autoCreateTime:false" json:"-"{{$.Q}}
+	{{- end}}
+	{{- if .NoUpdatedAt}}
+	UpdatedAt time.Time {{$.Q}}form:"-" gorm:"autoCreateTime:false" json:"-"{{$.Q}}
+	{{- end}}
 }
 
 type Tabler interface {

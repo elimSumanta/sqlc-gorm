@@ -54,6 +54,8 @@ type tmplCtx struct {
 	Fields         []Field
 	Comment        string
 	IDExists       bool
+	NoCreatedAt    bool
+	NoUpdatedAt    bool
 	IDType         string
 	ImportList     map[string]string
 	StructNameList []string
@@ -189,6 +191,8 @@ func generate(settings config.CombinedSettings, enums []Enum, structs []Struct, 
 			Fields:              v.Fields,
 			Comment:             v.Comment,
 			IDExists:            v.IDExists,
+			NoCreatedAt:         !v.CreatedAtExists,
+			NoUpdatedAt:         !v.UpdatedAtExists,
 			IDType:              v.IDType,
 			IDTypeUpper:         strings.Title(v.IDType),
 			ImportList:          v.ImportList,

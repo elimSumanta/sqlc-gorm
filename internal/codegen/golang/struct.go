@@ -8,15 +8,17 @@ import (
 )
 
 type Struct struct {
-	Table       core.FQN
-	ProjectPath string
-	Name        string
-	TableName   string
-	Fields      []Field
-	Comment     string
-	IDExists    bool
-	IDType      string
-	ImportList  map[string]string
+	Table           core.FQN
+	ProjectPath     string
+	Name            string
+	TableName       string
+	Fields          []Field
+	Comment         string
+	IDExists        bool
+	CreatedAtExists bool
+	UpdatedAtExists bool
+	IDType          string
+	ImportList      map[string]string
 }
 
 func StructName(name string, settings config.CombinedSettings) string {
