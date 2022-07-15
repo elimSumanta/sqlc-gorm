@@ -2,7 +2,7 @@ version: "1"
 packages:
   - name: "db"
     path: "output"
-    project_path: "gitlab.com/dacre/escudo"
+    project_path: "github.com/your-account/repo"
     queries: "./schema/qr.sql"
     schema: "./schema/qr_create.sql"
     engine: "postgresql"

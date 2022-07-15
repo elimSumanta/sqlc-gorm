@@ -302,7 +302,7 @@ func (c *{{.Name}}Case) GetListWithFilter(ctx context.Context, filter types.Data
 	defer span.RecordError(err)
 	var tableInfo types.DataTableAttribute
 
-	data.Data, tableInfo, err = c.userSecurityRepo.GetListByFilter(ctx, filter)
+	data.Data, tableInfo, err = c.Repo{{.Name}}.GetListByFilter(ctx, filter)
 	lib.GetDataTableVal(filter, &tableInfo)
 	data.ItemCount = tableInfo.ItemCount
 	data.TotalPages = tableInfo.TotalPages
