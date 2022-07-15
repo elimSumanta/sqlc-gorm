@@ -233,7 +233,7 @@ import (
 type {{.Name}}UseCase interface {
 	Submit(ctx context.Context, data types.{{.Name}}Entity) error
 	SubmitMultiple(ctx context.Context, data []types.{{.Name}}Entity) error
-	GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int, err error)
+	GetListWithFilter(ctx context.Context, filter types.DataTableCommonFilter) (types.DataTableCommonResponse, error)
 {{- if .IDExists}}
 	GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}Entity, found bool, err error)
 	UpdateByID(ctx context.Context, data types.{{.Name}}Entity) (err error)
@@ -296,19 +296,20 @@ func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []types.{{.Name
 	return
 }
 
-func (c *{{.Name}}Case) GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int, err error){
-	ctx, span := lib.StartUseCaseSpan(ctx, "{{.Name}}Case.GetList")
+func (c *{{.Name}}Case) GetListWithFilter(ctx context.Context, filter types.DataTableCommonFilter) (types.DataTableCommonResponse, error){
+	ctx, span := lib.StartUseCaseSpan(ctx, "{{.Name}}Case.GetListWithFilter")
 	defer span.End()
 	defer span.RecordError(err)
+	var tableInfo types.DataTableAttribute
 
-	if start >= 0 && limit >=1 {
-		data, count, err = c.Repo{{.Name}}.GetList(ctx, start, limit)
-		if err != nil {
-			log.Error().Err(err)
-		}
-	}else{
-		err = errors.New("invalid offset and page limit")
-	}
+	data.Data, tableInfo, err = c.userSecurityRepo.GetListByFilter(ctx, filter)
+	lib.GetDataTableVal(filter, &tableInfo)
+	data.ItemCount = tableInfo.ItemCount
+	data.TotalPages = tableInfo.TotalPages
+	data.First = tableInfo.First
+	data.Last = tableInfo.Last
+	data.TotalCount = tableInfo.TotalCount
+	
 	return
 }
 
@@ -433,8 +434,8 @@ import (
 
 type {{.Name}}Repository interface {
 	Submit(ctx context.Context, data types.{{.Name}}Entity) error
-	SubmitMultiple(ctx context.Context, data []types.{{.Name}}Entity) error	
-	GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int64, err error)
+	SubmitMultiple(ctx context.Context, data []types.{{.Name}}Entity) error		
+	GetListByFilter(ctx context.Context, filter types.DataTableCommonFilter) (data []types.{{.Name}}Entity, info types.DataTableAttribute, err error)
 	GetAll(ctx context.Context) (data []types.{{.Name}}Entity, count int64, err error)
 {{- if .IDExists}}
 	GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}Entity, found bool, err error)
@@ -566,42 +567,25 @@ func (d *{{.Name}}Data) UpdateByID(ctx context.Context, data types.{{.Name}}Enti
 }
 {{- end}}
 
-func (d *{{.Name}}Data) GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int, err error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil {
-		span, ctx = opentracing.StartSpanFromContext(ctx, "repo.GetList")
-		defer span.Finish()
-	}
-	count, err = d.SlaveDB.ModelContext(ctx, &data).Offset(offset).Limit(limit).SelectAndCount()
-	if err != nil {
-		log.Errorf("[{{.Name}}RepoImpl][GetList] error GetList : %+v", err)
-	}
-	return
-}
-
-func (d *{{.Name}}Data) UpdateByPK(ctx context.Context, data types.{{.Name}}Entity) (err error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil {
-		span, ctx = opentracing.StartSpanFromContext(ctx, "repo.UpdateByPK")
-		defer span.Finish()
-	}
-	_, err = d.MasterDB.ModelContext(ctx, &data).WherePK().Update()
-	if err != nil {
-		log.Errorf("[{{.Name}}RepoImpl][UpdateByPK] error UpdateByPK : %+v", err)
-	}
-	return
-}
-
-func (d *{{.Name}}Data) GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int64, err error) {
-	ctx, span := lib.StartRepositorySpan(ctx, "{{.Name}}Data.GetList")
+func (d *{{.Name}}Data) GetListByFilter(ctx context.Context, filter types.DataTableCommonFilter) (data []types.{{.Name}}Entity, info types.DataTableAttribute, err error) {
+	ctx, span := lib.StartRepositorySpan(ctx, "{{.Name}}Data.GetListByFilter")
 	defer span.End()
 	defer span.RecordError(err)
 
-	rs := d.SlaveDB.WithContext(ctx).Offset(offset).Limit(limit).Find(&data)
-	count = rs.RowsAffected
+	var modelData types.{{.Name}}Entity
+	rs := d.SlaveDB.WithContext(ctx).Model(&modelData).Count(&info.TotalCount)
 	err = rs.Error
 	if err == gorm.ErrRecordNotFound {
 		err = nil
 	}
-	
+
+	rs = d.SlaveDB.WithContext(ctx).Offset(filter.Offset).Limit(filter.Limit).Find(&data)
+	info.ItemCount = rs.RowsAffected
+	err = rs.Error
+	if err == gorm.ErrRecordNotFound {
+		err = nil
+	}
+
 	return
 }
 

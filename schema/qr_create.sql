@@ -1,4 +1,4 @@
-create table trs_product_category_info
+create table user_info
 (
     id serial not null
         constraint trs_product_category_info_pk

@@ -3,8 +3,8 @@ packages:
   - name: "db"
     path: "output"
     project_path: "gitlab.com/dacre/escudo"
-    queries: "./schema/query.sql"
-    schema: "./schema/db.sql"
+    queries: "./schema/qr.sql"
+    schema: "./schema/qr_create.sql"
     engine: "postgresql"
     emit_json_tags: true
     emit_form_tags: true
