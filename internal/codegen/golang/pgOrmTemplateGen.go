@@ -296,7 +296,7 @@ func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []types.{{.Name
 	return
 }
 
-func (c *{{.Name}}Case) GetListWithFilter(ctx context.Context, filter types.DataTableCommonFilter) (types.DataTableCommonResponse, error){
+func (c *{{.Name}}Case) GetListWithFilter(ctx context.Context, filter types.DataTableCommonFilter) (data types.DataTableCommonResponse, err error){
 	ctx, span := lib.StartUseCaseSpan(ctx, "{{.Name}}Case.GetListWithFilter")
 	defer span.End()
 	defer span.RecordError(err)
@@ -320,7 +320,7 @@ func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types
 	defer span.End()
 	defer span.RecordError(err)
 
-	data, found, err = c.repo{{.Name}}.GetByID(ctx, id)
+	err = c.repo{{.Name}}.GetByID(ctx, id)
 	if err != nil {
 		log.Error().Err(err)
 	}
