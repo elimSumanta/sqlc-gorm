@@ -273,7 +273,7 @@ func (c *{{.Name}}Case) Submit(ctx context.Context, data types.{{.Name}}Entity) 
 	defer span.End()
 	defer span.RecordError(err)
 
-	err = c.Repo{{.Name}}.Submit(ctx, data)
+	err = c.repo{{.Name}}.Submit(ctx, data)
 	if err != nil {
 		log.Error().Err(err)
 	}
@@ -286,7 +286,7 @@ func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []types.{{.Name
 	defer span.RecordError(err)
 
 	if len(data) > 0 {
-		err = c.Repo{{.Name}}.SubmitMultiple(ctx, data)
+		err = c.repo{{.Name}}.SubmitMultiple(ctx, data)
 		if err != nil {
 			log.Error().Err(err)
 		}
@@ -302,7 +302,7 @@ func (c *{{.Name}}Case) GetListWithFilter(ctx context.Context, filter types.Data
 	defer span.RecordError(err)
 	var tableInfo types.DataTableAttribute
 
-	data.Data, tableInfo, err = c.Repo{{.Name}}.GetListByFilter(ctx, filter)
+	data.Data, tableInfo, err = c.repo{{.Name}}.GetListByFilter(ctx, filter)
 	lib.GetDataTableVal(filter, &tableInfo)
 	data.ItemCount = tableInfo.ItemCount
 	data.TotalPages = tableInfo.TotalPages
@@ -320,7 +320,7 @@ func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types
 	defer span.End()
 	defer span.RecordError(err)
 
-	data, found, err = c.Repo{{.Name}}.GetByID(ctx, id)
+	data, found, err = c.repo{{.Name}}.GetByID(ctx, id)
 	if err != nil {
 		log.Error().Err(err)
 	}
@@ -332,7 +332,7 @@ func (c *{{.Name}}Case) UpdateByID(ctx context.Context, data types.{{.Name}}Enti
 	defer span.End()
 	defer span.RecordError(err)
 
-	data, found, err = c.Repo{{.Name}}.UpdateByID(ctx, data)
+	data, found, err = c.repo{{.Name}}.UpdateByID(ctx, data)
 	if err != nil {
 		log.Error().Err(err)
 	}
