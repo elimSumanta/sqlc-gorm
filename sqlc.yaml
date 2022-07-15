@@ -2,9 +2,9 @@ version: "1"
 packages:
   - name: "db"
     path: "output"
-    project_path: "github.com/my-account/my-repo"
+    project_path: "gitlab.com/dacre/escudo"
     queries: "./schema/query.sql"
-    schema: "./schema/author_schema.sql"
+    schema: "./schema/db.sql"
     engine: "postgresql"
     emit_json_tags: true
     emit_form_tags: true
@@ -13,6 +13,6 @@ packages:
     emit_exact_table_names: false
     emit_empty_slices: false
     generate_model: true
-    generate_delivery: true
+    generate_delivery: false
     generate_repo: true
     generate_usecase: true

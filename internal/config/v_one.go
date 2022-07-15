@@ -31,9 +31,9 @@ type v1PackageSettings struct {
 	Overrides           []Override `json:"overrides" yaml:"overrides"`
 	ProjectPath         string     `json:"project_path,omitempty" yaml:"project_path"`
 	GenerateModel       bool       `json:"generate_model" yaml:"generate_model"`
-	GenerateUsecase     bool       `json:"generate_delivery" yaml:"generate_delivery"`
+	GenerateDelivery    bool       `json:"generate_delivery" yaml:"generate_delivery"`
 	GenerateRepo        bool       `json:"generate_repo" yaml:"generate_repo"`
-	GenerateDelivery    bool       `json:"generate_usecase" yaml:"generate_usecase"`
+	GenerateUsecase     bool       `json:"generate_usecase" yaml:"generate_usecase"`
 }
 
 func v1ParseConfig(rd io.Reader) (Config, error) {

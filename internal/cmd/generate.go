@@ -142,7 +142,7 @@ func Generate(e Env, dir string, stderr io.Writer) (map[string]string, error) {
 
 		if err != nil {
 			fmt.Fprintf(stderr, "# package %s\n", name)
-			fmt.Fprintf(stderr, "error generating code: %s\n", err)
+			fmt.Fprintf(stderr, "error generating code: %#v\n", err)
 			errored = true
 			continue
 		}

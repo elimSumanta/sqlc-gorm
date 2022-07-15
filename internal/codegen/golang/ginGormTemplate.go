@@ -3,7 +3,7 @@ package golang
 import "fmt"
 
 var (
-	templateApiHandler = `
+	templateApiHandlerGorm = `
 {{define "deliveryHandler"}}
 package {{.Name}}
 
@@ -36,7 +36,7 @@ func (h *ApiWrapper) GetList(ctx iris.Context) (data *types.JSONResponse, err er
 	}
 	respData.Data, respData.Count, err = h.CaseWrapper.{{.Name}}UseCase.GetList(cx, pageListParam.Page, pageListParam.Limit)
 	if err != nil {
-		log.Errorf("[handler][GetList] error GetList : %+v", err)
+		log.Error().Err(err)
 	}
 	data.ResponseBody = respData
 	return
@@ -60,7 +60,7 @@ func (h *ApiWrapper) GetByID(ctx iris.Context) (data *types.JSONResponse, err er
 	}
 	data.ResponseBody, err = h.CaseWrapper.{{.Name}}UseCase.GetByID(cx, {{.IDType}}(itemID))
 	if err != nil {
-		log.Errorf("[handler][GetByID] error GetByID : %+v", err)
+		log.Error().Err(err)
 	}
 	return
 }
@@ -78,12 +78,12 @@ func (h *ApiWrapper) Submit(ctx iris.Context) (data *types.JSONResponse, err err
 	formPayload := types.{{.Name}}Entity{}
 	err = ctx.ReadForm(&formPayload)
 	if err != nil {
-		log.Errorf("[handler][Submit] error parse formPayload : %+v", err)
+		log.Error().Err(err)
 		return
 	}
 	err = h.CaseWrapper.{{.Name}}UseCase.Submit(cx, formPayload)
 	if err != nil {
-		log.Errorf("[handler][Submit] error submit {{.Name}} : %+v", err)
+		log.Error().Err(err)
 		return
 	}
 	data.ResponseBody = "{{.Name}} data has been submitted"
@@ -102,12 +102,12 @@ func (h *ApiWrapper) Update(ctx iris.Context) (data *types.JSONResponse, err err
 	formPayload := types.{{.Name}}Entity{}
 	err = ctx.ReadForm(&formPayload)
 	if err != nil {
-		log.Errorf("[handler][Update] error parse formPayload : %+v", err)
+		log.Error().Err(err)
 		return
 	}
 	err = h.CaseWrapper.{{.Name}}UseCase.UpdateByPK(cx, formPayload)
 	if err != nil {
-		log.Errorf("[handler][Update] error update {{.Name}} : %+v", err)
+		log.Error().Err(err)
 		return
 	}
 	data.ResponseBody = "{{.Name}} data has been updated"
@@ -126,12 +126,12 @@ func (h *ApiWrapper) Delete(ctx iris.Context) (data *types.JSONResponse, err err
 	formPayload := types.{{.Name}}Entity{}
 	err = ctx.ReadForm(&formPayload)
 	if err != nil {
-		log.Errorf("[handler][Delete] error parse formPayload : %+v", err)
+		log.Error().Err(err)
 		return
 	}
 	err = h.CaseWrapper.{{.Name}}UseCase.DeleteByPK(cx, formPayload)
 	if err != nil {
-		log.Errorf("[handler][Delete] error delete {{.Name}} : %+v", err)
+		log.Error().Err(err)
 		return
 	}
 	data.ResponseBody = "{{.Name}} data has been deleted"
@@ -139,13 +139,13 @@ func (h *ApiWrapper) Delete(ctx iris.Context) (data *types.JSONResponse, err err
 }
 {{end}}`
 
-	templateApiRouter = `
+	templateApiRouterGorm = `
 {{define "deliveryRouter"}}
 package {{.Name}}
 
 import (
 	"{{.ProjectPath}}/internal/delivery/api/helper"
-	"{{.ProjectPath}}/internal/model/config"
+	"{{.ProjectPath}}/internal/model/core"
 	"{{.ProjectPath}}/internal/usecase/util"
 )
 
@@ -175,7 +175,7 @@ func (h *ApiWrapper) registerRouter(m *helper.Middleware) {
 }
 {{end}}`
 
-	templateApiInit = `
+	templateApiInitGorm = `
 {{define "deliveryUtil"}}
 package delivery
 
@@ -184,7 +184,7 @@ import (
 	{{end}}	
 
 	"{{.ProjectPath}}/internal/delivery/api/helper"
-	"{{.ProjectPath}}/internal/model/config"
+	"{{.ProjectPath}}/internal/model/core"
 	"{{.ProjectPath}}/internal/usecase/util"
 	"github.com/kataras/iris/v12"
 )
@@ -196,12 +196,12 @@ func InitDeliveryAPI(cfg *config.Config, app *iris.Application, caseWrapper *uti
 }
 {{end}}`
 
-	templateUsecaseInit = `
+	templateUsecaseInitGorm = `
 {{define "usecaseUtil"}}
 package util
 
 import (
-	"{{.ProjectPath}}/internal/model/config"
+	"{{.ProjectPath}}/internal/model/core"
 	repoUtil "{{.ProjectPath}}/internal/repository/util"
 	"{{.ProjectPath}}/internal/usecase"
 	{{range .StructNameList}}{{.}}UCase "{{$.ProjectPath}}/internal/usecase/{{.}}"
@@ -221,7 +221,7 @@ func InitUsecase(cfg *config.Config, repoWrapper *repoUtil.RepositoryWrapper) (w
 }
 {{end}}`
 
-	templateUsecaseInterface = `
+	templateUsecaseInterfaceGorm = `
 {{define "usecaseInterface"}}
 package usecase
 
@@ -232,59 +232,59 @@ import (
 
 type {{.Name}}UseCase interface {
 	Submit(ctx context.Context, data types.{{.Name}}Entity) error
-	SubmitMultiple(ctx context.Context, data []types.{{.Name}}Entity) error
-	GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int, err error)
+	SubmitMultiple(ctx context.Context, data []*types.{{.Name}}Entity) error
+	UpdateByPK(ctx context.Context, data types.{{.Name}}Entity) error
+	DeleteByPK(ctx context.Context, data types.{{.Name}}Entity) error
+	GetList(ctx context.Context, start, limit int) (data []types.{{.Name}}Entity, count int, err error)
 {{- if .IDExists}}
-	GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}Entity, found bool, err error)
-	UpdateByID(ctx context.Context, data types.{{.Name}}Entity) (err error)
+	GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}Entity, err error)
 {{- end}}
 }
 {{end}}`
 
-	templateUseCaseImpl = `
+	templateUseCaseImplGorm = `
 {{define "usecaseImpl"}}
 package {{.Name}}
 
 import (
-	"{{.ProjectPath}}/internal/model/config"
+	"{{.ProjectPath}}/internal/model/core"
 	"{{.ProjectPath}}/internal/model/types"
 	"{{.ProjectPath}}/internal/repository"
 	"{{.ProjectPath}}/internal/repository/util"
 	"context"
 	"errors"
-	"{{.ProjectPath}}/pkg/lib"
-	"github.com/rs/zerolog/log"
+	"github.com/opentracing/opentracing-go"
+	log "github.com/sirupsen/logrus"
 )
 
 type {{.Name}}Case struct {
-	cfg         *config.Config
-	repo{{.Name}} repository.{{.Name}}Repository
+	Cfg         *config.Config
+	Repo{{.Name}} repository.{{.Name}}Repository
 }
 
 func New(cfg *config.Config, repoWrapper *util.RepositoryWrapper) *{{.Name}}Case {
 	return &{{.Name}}Case{
-		cfg:         cfg,
-		repo{{.Name}}: repoWrapper.Repo{{.Name}},
+		Cfg:         cfg,
+		Repo{{.Name}}: repoWrapper.Repo{{.Name}},
 	}
 }
 
 func (c *{{.Name}}Case) Submit(ctx context.Context, data types.{{.Name}}Entity) (err error){
-	ctx, span := lib.StartUseCaseSpan(ctx, "{{.Name}}Case.Submit")
-	defer span.End()
-	defer span.RecordError(err)
-
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.Submit")
+		defer span.Finish()
+	}
 	err = c.Repo{{.Name}}.Submit(ctx, data)
 	if err != nil {
 		log.Error().Err(err)
 	}
 	return
 }
-
-func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []types.{{.Name}}Entity) (err error){
-	ctx, span := lib.StartUseCaseSpan(ctx, "{{.Name}}Case.SubmitMultiple")
-	defer span.End()
-	defer span.RecordError(err)
-
+func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []*types.{{.Name}}Entity) (err error){
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.SubmitMultiple")
+		defer span.Finish()
+	}
 	if len(data) > 0 {
 		err = c.Repo{{.Name}}.SubmitMultiple(ctx, data)
 		if err != nil {
@@ -295,12 +295,33 @@ func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []types.{{.Name
 	}
 	return
 }
-
-func (c *{{.Name}}Case) GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int, err error){
-	ctx, span := lib.StartUseCaseSpan(ctx, "{{.Name}}Case.GetList")
-	defer span.End()
-	defer span.RecordError(err)
-
+func (c *{{.Name}}Case) UpdateByPK(ctx context.Context, data types.{{.Name}}Entity) (err error){
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.UpdateByPK")
+		defer span.Finish()
+	}
+	err = c.Repo{{.Name}}.UpdateByPK(ctx, data)
+	if err != nil {
+		log.Error().Err(err)
+	}
+	return
+}
+func (c *{{.Name}}Case) DeleteByPK(ctx context.Context, data types.{{.Name}}Entity) (err error){
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.DeleteByPK")
+		defer span.Finish()
+	}
+	err = c.Repo{{.Name}}.DeleteByPK(ctx, data)
+	if err != nil {
+		log.Error().Err(err)
+	}
+	return
+}
+func (c *{{.Name}}Case) GetList(ctx context.Context, start, limit int) (data []types.{{.Name}}Entity, count int, err error){
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.GetList")
+		defer span.Finish()
+	}
 	if start >= 0 && limit >=1 {
 		data, count, err = c.Repo{{.Name}}.GetList(ctx, start, limit)
 		if err != nil {
@@ -311,46 +332,34 @@ func (c *{{.Name}}Case) GetList(ctx context.Context, offset, limit int) (data []
 	}
 	return
 }
-
 {{- if .IDExists}}
-
-func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}Entity, found bool, err error){
-	ctx, span := lib.StartUseCaseSpan(ctx, "{{.Name}}Case.GetByID")
-	defer span.End()
-	defer span.RecordError(err)
-
-	data, found, err = c.Repo{{.Name}}.GetByID(ctx, id)
+func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types.{{.Name}}Entity, err error){
+	if span := opentracing.SpanFromContext(ctx); span != nil {
+		span, ctx = opentracing.StartSpanFromContext(ctx, "usecase.GetByID")
+		defer span.Finish()
+	}
+	data, err = c.Repo{{.Name}}.GetByID(ctx, id)
 	if err != nil {
 		log.Error().Err(err)
 	}
 	return
 }
-
-func (c *{{.Name}}Case) UpdateByID(ctx context.Context, data types.{{.Name}}Entity) (err error){
-	ctx, span := lib.StartUseCaseSpan(ctx, "{{.Name}}Case.UpdateByID")
-	defer span.End()
-	defer span.RecordError(err)
-
-	data, found, err = c.Repo{{.Name}}.UpdateByID(ctx, data)
-	if err != nil {
-		log.Error().Err(err)
-	}
-	return
-}
-
 {{- end}}
 {{end}}`
 
-	templateRepoUtil = `
+	templateRepoUtilGorm = `
 {{define "repoUtil"}}
 package util
 
 import (
+	"github.com/rs/zerolog/log"
 	"{{.ProjectPath}}/internal/model/config"
-	"{{.ProjectPath}}/internal/repository"
 	"{{.ProjectPath}}/internal/repository/postgre"
+	"{{.ProjectPath}}/internal/repository/redis"
+	"{{.ProjectPath}}/internal/repository"
+	"{{.ProjectPath}}/pkg/lib"
 	{{range .StructNameList}}{{.}}Repo "{{$.ProjectPath}}/internal/repository/postgre/{{.}}"
-	{{end}}	
+	{{end}}		
 )
 
 type RepositoryWrapper struct {
@@ -358,23 +367,32 @@ type RepositoryWrapper struct {
 	{{end}}	
 }
 
-func InitRepo(cfg *config.Config) *RepositoryWrapper {
-	var (
-		MasterDB, SlaveDB *pg.DB
-	)
-	dbWrapper := postgre.InitPostgre(cfg)
+func NewRepository(ctx context.Context, cfg *config.Config) (*RepositoryWrapper, error) {
+	ctx, span := lib.StartInitSpan(ctx, "NewRepository")
+	defer span.End()
+
+	// init redis repo
+	redisRepo := redis.NewRedisRepo(ctx, cfg)
+
+	// init postgre-sql
+	DBWrapper, err := postgre.InitDB(ctx, cfg)
+	if err != nil {
+		log.Error().Err(err)
+		return nil, err
+	}
+
 	//add init master & slave db here based on config file
 	
 	//eof master & slave db init
 	return &RepositoryWrapper{
-		{{range .StructNameList}}Repo{{.}}: {{.}}Repo.New{{.}}Wrapper(MasterDB, SlaveDB),
+		{{range .StructNameList}}Repo{{.}}: {{.}}Repo.New{{.}}Wrapper(DBWrapper.MasterDB, DBWrapper.SlaveDB),
 		{{end}}	
 	}
 }
 {{end}}
 `
 
-	templateModel = `
+	templateModelGorm = `
 {{define "entityFile"}}
 package types
 
@@ -402,7 +420,6 @@ func ({{.Name}}Entity) TableName() string {
 
 {{end}}
 
-
 {{define "payloadFile"}}
 package types
 
@@ -422,7 +439,7 @@ type {{.Name}}Payload struct {
 	{{- end}}
 }
 {{end}}`
-	templatePostgre = `
+	templatePostgreGorm = `
 {{define "repoInterfaceFile"}}
 package repository
 
@@ -566,30 +583,6 @@ func (d *{{.Name}}Data) UpdateByID(ctx context.Context, data types.{{.Name}}Enti
 }
 {{- end}}
 
-func (d *{{.Name}}Data) GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int, err error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil {
-		span, ctx = opentracing.StartSpanFromContext(ctx, "repo.GetList")
-		defer span.Finish()
-	}
-	count, err = d.SlaveDB.ModelContext(ctx, &data).Offset(offset).Limit(limit).SelectAndCount()
-	if err != nil {
-		log.Errorf("[{{.Name}}RepoImpl][GetList] error GetList : %+v", err)
-	}
-	return
-}
-
-func (d *{{.Name}}Data) UpdateByPK(ctx context.Context, data types.{{.Name}}Entity) (err error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil {
-		span, ctx = opentracing.StartSpanFromContext(ctx, "repo.UpdateByPK")
-		defer span.Finish()
-	}
-	_, err = d.MasterDB.ModelContext(ctx, &data).WherePK().Update()
-	if err != nil {
-		log.Errorf("[{{.Name}}RepoImpl][UpdateByPK] error UpdateByPK : %+v", err)
-	}
-	return
-}
-
 func (d *{{.Name}}Data) GetList(ctx context.Context, offset, limit int) (data []types.{{.Name}}Entity, count int64, err error) {
 	ctx, span := lib.StartRepositorySpan(ctx, "{{.Name}}Data.GetList")
 	defer span.End()
@@ -622,16 +615,16 @@ func (d *{{.Name}}Data) GetAll(ctx context.Context) (data []types.{{.Name}}Entit
 
 {{end}}`
 
-	templateEsmart = fmt.Sprintf(
+	templateOut = fmt.Sprintf(
 		"%s %s %s %s %s %s %s %s %s",
-		templateRepoUtil,
-		templateModel,
-		templatePostgre,
-		templateUsecaseInterface,
-		templateUseCaseImpl,
-		templateUsecaseInit,
-		templateApiHandler,
-		templateApiRouter,
-		templateApiInit,
+		templateRepoUtilGorm,
+		templateModelGorm,
+		templatePostgreGorm,
+		templateUsecaseInterfaceGorm,
+		templateUseCaseImplGorm,
+		templateUsecaseInitGorm,
+		templateApiHandlerGorm,
+		templateApiRouterGorm,
+		templateApiInitGorm,
 	)
 )

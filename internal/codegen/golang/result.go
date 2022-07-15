@@ -88,15 +88,15 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 				originalColName := column.Name
 				column.Name = ToSnakeCase(column.Name)
 				tags := map[string]string{}
-				if settings.Go.EmitDBTags {
-					tags["db:"] = column.Name
-				}
-				if settings.Go.EmitJSONTags {
-					tags["json:"] = column.Name
-				}
+				//if settings.Go.EmitDBTags {
+				//	tags["db:"] = column.Name
+				//}
+				//if settings.Go.EmitJSONTags {
+				tags["json:"] = column.Name
+				//}
 
 				tags["form:"] = column.Name
-				tags["pg:"] = originalColName
+				tags["gorm:"] = "column:" + originalColName
 				colType := goType(r, compiler.ConvertColumn(table.Rel, column), settings)
 				s.Fields = append(s.Fields, Field{
 					Name:    StructName(column.Name, settings),
