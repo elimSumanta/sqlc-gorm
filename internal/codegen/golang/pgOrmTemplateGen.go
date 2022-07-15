@@ -360,15 +360,19 @@ type RepositoryWrapper struct {
 }
 
 func InitRepo(cfg *config.Config) *RepositoryWrapper {
-	var (
-		MasterDB, SlaveDB *pg.DB
-	)
-	dbWrapper := postgre.InitPostgre(cfg)
-	//add init master & slave db here based on config file
+	ctx, span := lib.StartInitSpan(ctx, "NewRepository")
+	defer span.End()
+
+	// init postgre-sql
+	DBWrapper, err := postgre.InitDB(ctx, cfg)
+	if err != nil {
+		log.Error().Err(err)
+		return nil, err
+	}
 	
 	//eof master & slave db init
 	return &RepositoryWrapper{
-		{{range .StructNameList}}Repo{{.}}: {{.}}Repo.New{{.}}Wrapper(MasterDB, SlaveDB),
+		{{range .StructNameList}}Repo{{.}}: {{.}}Repo.New{{.}}Wrapper(DBWrapper.MasterDB, DBWrapper.SlaveDB),
 		{{end}}	
 	}
 }
