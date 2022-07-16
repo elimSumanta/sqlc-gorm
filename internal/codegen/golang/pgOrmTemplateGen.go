@@ -51,7 +51,7 @@ func (r *apiRouter) getList(c *gin.Context) {
 
 {{- if .IDExists}}
 // get {{.Name}} by ID
-func (r *apiRouter) GetByID(c *gin.Context) { 
+func (r *apiRouter) getByID(c *gin.Context) { 
 	var (
 		id types.ParamID{{.IDType}}
 		err    error
