@@ -144,34 +144,33 @@ func (h *ApiWrapper) Delete(ctx iris.Context) (data *types.JSONResponse, err err
 package {{.Name}}
 
 import (
-	"{{.ProjectPath}}/internal/delivery/api/helper"
+	"github.com/gin-gonic/gin"
 	"{{.ProjectPath}}/internal/model/config"
+	"{{.ProjectPath}}/internal/usecase"
 	"{{.ProjectPath}}/internal/usecase/util"
 )
 
-type ApiWrapper struct {
-	CaseWrapper *util.UseCaseWrapper
-	Config      *config.Config
+type apiRouter struct {
+	cfg           *config.Config
+	{{.Name}}Case usecase.{{.Name}}Case
 }
 
-func InitRoute(cfg *config.Config, middleware *helper.Middleware, caseWrapper *util.UseCaseWrapper) {
-	api := ApiWrapper{
-		CaseWrapper: caseWrapper,
-		Config:      cfg,
+func InitRoute(cfg *config.Config, group *gin.RouterGroup, uc *util.UseCaseWrapper) {
+	r := apiRouter{
+		cfg:           cfg,
+		{{.Name}}Case: uc.{{.Name}}Case,
 	}
-	api.registerRouter(middleware)
+	r.Register(group)
 }
 
-func (h *ApiWrapper) registerRouter(m *helper.Middleware) {
-	m.POST("/{{.TableName}}/submit", h.Submit)
-	m.PUT("/{{.TableName}}/update", h.Update)
-	m.DELETE("/{{.TableName}}/delete", h.Delete)
-	//base_url/{{.TableName}}/list?page=0&limit=10
-	m.GET("/{{.TableName}}/list", h.GetList)
-{{- if .IDExists}}
-	//base_url/{{.TableName}}/{item_ID}
-	m.GET("/{{.TableName}}/{id}", h.GetByID)
-{{- end}}
+func (r *apiRouter) Register(rg *gin.RouterGroup) {
+	rg.POST("/submit", r.submit)
+	rg.POST("/submit_multiple", r.submitMultiple)
+	rg.GET("/list", r.getList)
+	{{- if .IDExists}}
+	rg.GET("/get/:id", r.getByID)
+	rg.UPDATE("/update", r.update)
+	{{- end}}
 }
 {{end}}`
 
@@ -180,18 +179,20 @@ func (h *ApiWrapper) registerRouter(m *helper.Middleware) {
 package delivery
 
 import (	
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	{{range .StructNameList}}{{.}}API "{{$.ProjectPath}}/internal/delivery/api/{{.}}" 
-	{{end}}	
-
-	"{{.ProjectPath}}/internal/delivery/api/helper"
+	{{end}}
 	"{{.ProjectPath}}/internal/model/config"
 	"{{.ProjectPath}}/internal/usecase/util"
-	"github.com/kataras/iris/v12"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
-func InitDeliveryAPI(cfg *config.Config, app *iris.Application, caseWrapper *util.UseCaseWrapper) {
-	middleware := helper.NewMiddleware(cfg, app)
-	{{range .StructNameList}}{{.}}API.InitRoute(cfg, middleware, caseWrapper)
+
+func (d *APIDelivery) initRoutingGroup() {
+	{{range .StructNameList}}	
+	group{{.}} := d.Router.Group("/{{.}}")
+	{{.}}.InitRoute(d.cfg, group{{.}}, d.caseWrapper)
 	{{end}}
 }
 {{end}}`
@@ -275,7 +276,7 @@ func (c *{{.Name}}Case) Submit(ctx context.Context, data types.{{.Name}}Entity) 
 
 	err = c.repo{{.Name}}.Submit(ctx, data)
 	if err != nil {
-		log.Error().Err(err)
+		log.Error().Stack().Err(err)
 	}
 	return
 }
@@ -288,7 +289,7 @@ func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []types.{{.Name
 	if len(data) > 0 {
 		err = c.repo{{.Name}}.SubmitMultiple(ctx, data)
 		if err != nil {
-			log.Error().Err(err)
+			log.Error().Stack().Err(err)
 		}
 	}else{
 		err = errors.New("data input is empty")
@@ -322,7 +323,7 @@ func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types
 
 	err = c.repo{{.Name}}.GetByID(ctx, id)
 	if err != nil {
-		log.Error().Err(err)
+		log.Error().Stack().Err(err)
 	}
 	return
 }
@@ -334,7 +335,7 @@ func (c *{{.Name}}Case) UpdateByID(ctx context.Context, data types.{{.Name}}Enti
 
 	data, found, err = c.repo{{.Name}}.UpdateByID(ctx, data)
 	if err != nil {
-		log.Error().Err(err)
+		log.Error().Stack().Err(err)
 	}
 	return
 }
@@ -366,7 +367,7 @@ func InitRepo(cfg *config.Config) *RepositoryWrapper {
 	// init postgre-sql
 	DBWrapper, err := postgre.InitDB(ctx, cfg)
 	if err != nil {
-		log.Error().Err(err)
+		log.Error().Stack().Err(err)
 		return nil, err
 	}
 	
@@ -488,7 +489,7 @@ func (d *{{.Name}}Data) Submit(ctx context.Context, data types.{{.Name}}Entity) 
 			tx.Rollback()
 		}
 		if err != nil {
-			log.Error().Err(err)
+			log.Error().Stack().Err(err)
 		}
 	}()
 
@@ -516,7 +517,7 @@ func (d *{{.Name}}Data) SubmitMultiple(ctx context.Context, data []types.{{.Name
 			tx.Rollback()
 		}
 		if err != nil {
-			log.Error().Err(err)
+			log.Error().Stack().Err(err)
 		}
 	}()
 
@@ -558,7 +559,7 @@ func (d *{{.Name}}Data) UpdateByID(ctx context.Context, data types.{{.Name}}Enti
 			tx.Rollback()
 		}
 		if err != nil {
-			log.Error().Err(err)
+			log.Error().Stack().Err(err)
 		}
 	}()
 

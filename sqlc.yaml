@@ -13,6 +13,6 @@ packages:
     emit_exact_table_names: false
     emit_empty_slices: false
     generate_model: true
-    generate_delivery: false
-    generate_repo: true
-    generate_usecase: true
+    generate_delivery: true
+    generate_repo: false
+    generate_usecase: false
