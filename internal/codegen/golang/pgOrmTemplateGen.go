@@ -14,8 +14,8 @@ import (
 	"net/http"
 )
 
-//GET
-func (h *ApiWrapper) getList(c *gin.Context) {
+// get {{.Name}} by filter
+func (r *apiRouter) getList(c *gin.Context) {
 	var (
 		filter types.DataTableCommonFilter
 		err    error
@@ -50,31 +50,44 @@ func (h *ApiWrapper) getList(c *gin.Context) {
 }
 
 {{- if .IDExists}}
-//GET
-func (h *ApiWrapper) GetByID(ctx iris.Context) (data *types.JSONResponse, err error) {
-	span := opentracing.GlobalTracer().StartSpan("api.GetByID")
-	defer span.Finish()
-	cx := opentracing.ContextWithSpan(context.Background(), span)
-	data = &types.JSONResponse{
-		ResponseHeader: types.JSONHeader{
-			Code:    200,
-		},
-	}
-	var itemID int
-	itemID, err = ctx.URLParamInt("id")
+// get {{.Name}} by ID
+func (r *apiRouter) GetByID(c *gin.Context) { 
+	var (
+		id types.ParamID{{.IDType}}
+		err    error
+		resp   = types.JSONResponse{
+			ResponseHeader: types.JSONHeader{
+				Code: http.StatusOK,
+			},
+		}
+	)
 
-	if err != nil {
+	if err = c.ShouldBindUri(&id); err != nil {
+		log.Error().Stack().Err(err)
+		resp.ResponseHeader = types.JSONHeader{
+			ErrMessage: err,
+			Code:       http.StatusBadRequest,
+		}
+		c.JSON(resp.ResponseHeader.Code, resp)
 		return
 	}
-	data.ResponseBody, err = h.CaseWrapper.{{.Name}}UseCase.GetByID(cx, {{.IDType}}(itemID))
+
+	resp.ResponseBody, _, err = r.DtsUserListCase.GetByID(c, id.ID)
 	if err != nil {
-		log.Errorf("[handler][GetByID] error GetByID : %+v", err)
+		resp.ResponseHeader = types.JSONHeader{
+			ErrMessage: err,
+			Code:       http.StatusInternalServerError,
+		}
+		c.JSON(resp.ResponseHeader.Code, resp)
+		return
 	}
+	c.JSON(resp.ResponseHeader.Code, resp)
 	return
 }
 {{- end}}
-//POST
-func (h *ApiWrapper) Submit(ctx iris.Context) (data *types.JSONResponse, err error) {
+
+// submit new {{.Name}}
+func (r *apiRouter) Submit(ctx iris.Context) (data *types.JSONResponse, err error) {
 	span := opentracing.GlobalTracer().StartSpan("api.Submit")
 	defer span.Finish()
 	cx := opentracing.ContextWithSpan(context.Background(), span)
@@ -97,8 +110,8 @@ func (h *ApiWrapper) Submit(ctx iris.Context) (data *types.JSONResponse, err err
 	data.ResponseBody = "{{.Name}} data has been submitted"
 	return
 }
-//PUT
-func (h *ApiWrapper) Update(ctx iris.Context) (data *types.JSONResponse, err error) {
+
+func (r *apiRouter) Update(ctx iris.Context) (data *types.JSONResponse, err error) {
 	span := opentracing.GlobalTracer().StartSpan("api.Update")
 	defer span.Finish()
 	cx := opentracing.ContextWithSpan(context.Background(), span)
@@ -122,7 +135,7 @@ func (h *ApiWrapper) Update(ctx iris.Context) (data *types.JSONResponse, err err
 	return
 }
 //DELETE
-func (h *ApiWrapper) Delete(ctx iris.Context) (data *types.JSONResponse, err error) {
+func (r *apiRouter) Delete(ctx iris.Context) (data *types.JSONResponse, err error) {
 	span := opentracing.GlobalTracer().StartSpan("api.Delete")
 	defer span.Finish()
 	cx := opentracing.ContextWithSpan(context.Background(), span)
@@ -160,13 +173,13 @@ import (
 
 type apiRouter struct {
 	cfg           *config.Config
-	{{.Name}}Case usecase.{{.Name}}Case
+	{{.Name}}Case usecase.{{.Name}}UseCase
 }
 
 func InitRoute(cfg *config.Config, group *gin.RouterGroup, uc *util.UseCaseWrapper) {
 	r := apiRouter{
 		cfg:           cfg,
-		{{.Name}}Case: uc.{{.Name}}Case,
+		{{.Name}}Case: uc.{{.Name}}UseCase,
 	}
 	r.Register(group)
 }
@@ -177,7 +190,7 @@ func (r *apiRouter) Register(rg *gin.RouterGroup) {
 	rg.GET("/list", r.getList)
 	{{- if .IDExists}}
 	rg.GET("/get/:id", r.getByID)
-	rg.UPDATE("/update", r.update)
+	rg.POST("/update", r.update)
 	{{- end}}
 }
 {{end}}`
@@ -410,10 +423,6 @@ type {{.Name}}Entity struct {
 	{{- if .NoUpdatedAt}}
 	UpdatedAt time.Time {{$.Q}}form:"-" gorm:"autoCreateTime:false" json:"-"{{$.Q}}
 	{{- end}}
-}
-
-type Tabler interface {
-  TableName() string
 }
 
 func ({{.Name}}Entity) TableName() string {

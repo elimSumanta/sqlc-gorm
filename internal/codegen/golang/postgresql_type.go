@@ -16,9 +16,9 @@ func postgresType(r *compiler.Result, col *compiler.Column, settings config.Comb
 	switch columnType {
 	case "serial", "serial4", "pg_catalog.serial4":
 		if notNull {
-			return "int32"
+			return "int"
 		}
-		return "sql.NullInt32"
+		return "sql.NullInt"
 
 	case "bigserial", "serial8", "pg_catalog.serial8":
 		if notNull {
@@ -31,9 +31,9 @@ func postgresType(r *compiler.Result, col *compiler.Column, settings config.Comb
 
 	case "integer", "int", "int4", "pg_catalog.int4":
 		if notNull {
-			return "int32"
+			return "int"
 		}
-		return "sql.NullInt32"
+		return "sql.NullInt"
 
 	case "bigint", "int8", "pg_catalog.int8":
 		if notNull {
