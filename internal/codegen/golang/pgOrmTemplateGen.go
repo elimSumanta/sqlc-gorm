@@ -8,39 +8,47 @@ var (
 package {{.Name}}
 
 import (
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"{{.ProjectPath}}/internal/model/types"
-	"context"
-	"github.com/kataras/iris/v12"
-	"github.com/opentracing/opentracing-go"
-	log "github.com/sirupsen/logrus"
+	"net/http"
 )
 
 //GET
-func (h *ApiWrapper) GetList(ctx iris.Context) (data *types.JSONResponse, err error) {
-	span := opentracing.GlobalTracer().StartSpan("api.GetList")
-	defer span.Finish()
-	cx := opentracing.ContextWithSpan(context.Background(), span)
-	data = &types.JSONResponse{
-		ResponseHeader: types.JSONHeader{
-			Code:    200,
-		},
-	}
+func (h *ApiWrapper) getList(c *gin.Context) {
 	var (
-		pageListParam = types.PaginationParam{}
-		respData = types.ListResponseData{}
+		filter types.DataTableCommonFilter
+		err    error
+		resp   = types.JSONResponse{
+			ResponseHeader: types.JSONHeader{
+				Code: http.StatusOK,
+			},
+		}
 	)
-	err = ctx.ReadQuery(&pageListParam)
-	if err != nil {
-		ctx.StopWithError(iris.StatusInternalServerError, err)
+
+	if err := c.ShouldBind(&filter); err != nil {
+		log.Error().Stack().Err(err)
+		resp.ResponseHeader = types.JSONHeader{
+			ErrMessage: err,
+			Code:       http.StatusBadRequest,
+		}
+		c.JSON(resp.ResponseHeader.Code, resp)
 		return
 	}
-	respData.Data, respData.Count, err = h.CaseWrapper.{{.Name}}UseCase.GetList(cx, pageListParam.Page, pageListParam.Limit)
+
+	resp.ResponseBody, err = r.{{.Name}}Case.GetListWithFilter(c, filter)
 	if err != nil {
-		log.Errorf("[handler][GetList] error GetList : %+v", err)
+		resp.ResponseHeader = types.JSONHeader{
+			ErrMessage: err,
+			Code:       http.StatusInternalServerError,
+		}
+		c.JSON(resp.ResponseHeader.Code, resp)
+		return
 	}
-	data.ResponseBody = respData
+	c.JSON(resp.ResponseHeader.Code, resp)
 	return
 }
+
 {{- if .IDExists}}
 //GET
 func (h *ApiWrapper) GetByID(ctx iris.Context) (data *types.JSONResponse, err error) {
