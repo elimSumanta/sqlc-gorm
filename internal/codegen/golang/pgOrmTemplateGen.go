@@ -72,7 +72,7 @@ func (r *apiRouter) getByID(c *gin.Context) {
 		return
 	}
 
-	resp.ResponseBody, _, err = r.{{.Name}}.GetByID(c, id.ID)
+	resp.ResponseBody, _, err = r.{{.Name}}Case.GetByID(c, id.ID)
 	if err != nil {
 		resp.ResponseHeader = types.JSONHeader{
 			ErrMessage: err,
@@ -150,11 +150,9 @@ func InitRoute(cfg *config.Config, group *gin.RouterGroup, uc *util.UseCaseWrapp
 
 func (r *apiRouter) Register(rg *gin.RouterGroup) {
 	rg.POST("/submit", r.submit)
-	rg.POST("/submit_multiple", r.submitMultiple)
 	rg.GET("/list", r.getList)
 	{{- if .IDExists}}
 	rg.GET("/get/:id", r.getByID)
-	rg.POST("/update", r.update)
 	{{- end}}
 }
 {{end}}`
