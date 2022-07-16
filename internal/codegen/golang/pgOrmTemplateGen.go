@@ -72,7 +72,7 @@ func (r *apiRouter) getByID(c *gin.Context) {
 		return
 	}
 
-	resp.ResponseBody, _, err = r.DtsUserListCase.GetByID(c, id.ID)
+	resp.ResponseBody, _, err = r.{{.Name}}.GetByID(c, id.ID)
 	if err != nil {
 		resp.ResponseHeader = types.JSONHeader{
 			ErrMessage: err,
@@ -87,77 +87,41 @@ func (r *apiRouter) getByID(c *gin.Context) {
 {{- end}}
 
 // submit new {{.Name}}
-func (r *apiRouter) Submit(ctx iris.Context) (data *types.JSONResponse, err error) {
-	span := opentracing.GlobalTracer().StartSpan("api.Submit")
-	defer span.Finish()
-	cx := opentracing.ContextWithSpan(context.Background(), span)
-	data = &types.JSONResponse{
-		ResponseHeader: types.JSONHeader{
-			Code:    200,
-		},
-	}
-	formPayload := types.{{.Name}}Entity{}
-	err = ctx.ReadForm(&formPayload)
+func (r *apiRouter) submit(c *gin.Context) {
+	var (
+		payload types.{{.Name}}Entity
+		err  error
+		resp = types.JSONResponse{
+			ResponseHeader: types.JSONHeader{
+				Code: http.StatusOK,
+			},
+		}
+	)
+	err = c.Bind(payload)
 	if err != nil {
-		log.Errorf("[handler][Submit] error parse formPayload : %+v", err)
+		log.Error().Stack().Err(err)
+		resp.ResponseHeader = types.JSONHeader{
+			ErrMessage: err,
+			Code:       http.StatusBadRequest,
+		}
+		c.JSON(resp.ResponseHeader.Code, resp)
 		return
 	}
-	err = h.CaseWrapper.{{.Name}}UseCase.Submit(cx, formPayload)
+	
+	err = r.{{.Name}}Case.Submit(c, payload)
 	if err != nil {
-		log.Errorf("[handler][Submit] error submit {{.Name}} : %+v", err)
+		log.Error().Stack().Err(err)
+		resp.ResponseHeader = types.JSONHeader{
+			ErrMessage: err,
+			Code:       http.StatusBadRequest,
+		}
+		c.JSON(resp.ResponseHeader.Code, resp)
 		return
 	}
-	data.ResponseBody = "{{.Name}} data has been submitted"
+	c.JSON(resp.ResponseHeader.Code, resp)
 	return
 }
 
-func (r *apiRouter) Update(ctx iris.Context) (data *types.JSONResponse, err error) {
-	span := opentracing.GlobalTracer().StartSpan("api.Update")
-	defer span.Finish()
-	cx := opentracing.ContextWithSpan(context.Background(), span)
-	data = &types.JSONResponse{
-		ResponseHeader: types.JSONHeader{
-			Code:    200,
-		},
-	}
-	formPayload := types.{{.Name}}Entity{}
-	err = ctx.ReadForm(&formPayload)
-	if err != nil {
-		log.Errorf("[handler][Update] error parse formPayload : %+v", err)
-		return
-	}
-	err = h.CaseWrapper.{{.Name}}UseCase.UpdateByPK(cx, formPayload)
-	if err != nil {
-		log.Errorf("[handler][Update] error update {{.Name}} : %+v", err)
-		return
-	}
-	data.ResponseBody = "{{.Name}} data has been updated"
-	return
-}
-//DELETE
-func (r *apiRouter) Delete(ctx iris.Context) (data *types.JSONResponse, err error) {
-	span := opentracing.GlobalTracer().StartSpan("api.Delete")
-	defer span.Finish()
-	cx := opentracing.ContextWithSpan(context.Background(), span)
-	data = &types.JSONResponse{
-		ResponseHeader: types.JSONHeader{
-			Code:    200,
-		},
-	}
-	formPayload := types.{{.Name}}Entity{}
-	err = ctx.ReadForm(&formPayload)
-	if err != nil {
-		log.Errorf("[handler][Delete] error parse formPayload : %+v", err)
-		return
-	}
-	err = h.CaseWrapper.{{.Name}}UseCase.DeleteByPK(cx, formPayload)
-	if err != nil {
-		log.Errorf("[handler][Delete] error delete {{.Name}} : %+v", err)
-		return
-	}
-	data.ResponseBody = "{{.Name}} data has been deleted"
-	return
-}
 {{end}}`
 
 	templateApiRouter = `
