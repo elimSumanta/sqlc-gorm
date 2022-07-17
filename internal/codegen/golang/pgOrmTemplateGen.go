@@ -469,11 +469,13 @@ func (d *{{.Name}}Data) GetByID(ctx context.Context, id {{.IDType}}) (data types
 	defer span.End()
 	defer span.RecordError(err)
 
-	err = d.SlaveDB.WithContext(ctx).Take(&data, "id = ?", id).Error
-	if err == gorm.ErrRecordNotFound {
+	rs := d.SlaveDB.WithContext(ctx).Take(&data, "id = ?", id)
+	if rs.Error == gorm.ErrRecordNotFound {
 		err = nil
+	}else{
+		err = rs.Error
 	}
-	found = err == nil
+	found = rs.RowsAffected > 0
 	return
 }
 
