@@ -2,7 +2,7 @@ version: "1"
 packages:
   - name: "db"
     path: "output"
-    project_path: "github.com/your-account/repo"
+    project_path: "gitlab.com/dacre/escudo"
     queries: "./schema/qr.sql"
     schema: "./schema/qr_create.sql"
     engine: "postgresql"
@@ -14,5 +14,5 @@ packages:
     emit_empty_slices: false
     generate_model: true
     generate_delivery: true
-    generate_repo: false
-    generate_usecase: false
+    generate_repo: true
+    generate_usecase: true

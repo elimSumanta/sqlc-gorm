@@ -15,110 +15,52 @@ import (
 )
 
 // get {{.Name}} by filter
-func (r *apiRouter) getList(c *gin.Context) {
-	var (
-		filter types.DataTableCommonFilter
-		err    error
-		resp   = types.JSONResponse{
-			ResponseHeader: types.JSONHeader{
-				Code: http.StatusOK,
-			},
-		}
-	)
-
+func (r *apiRouter) getList(c *gin.Context) (data interface{}, httpCode int, err error){
+	var filter types.DataTableCommonFilter
 	if err := c.ShouldBind(&filter); err != nil {
 		log.Error().Stack().Err(err)
-		resp.ResponseHeader = types.JSONHeader{
-			ErrMessage: err,
-			Code:       http.StatusBadRequest,
-		}
-		c.JSON(resp.ResponseHeader.Code, resp)
-		return
+		return nil, http.StatusBadRequest, err
 	}
-
-	resp.ResponseBody, err = r.{{.Name}}Case.GetListWithFilter(c, filter)
+	
+	data, err = r.{{.Name}}Case.GetListWithFilter(ctx, filter)
 	if err != nil {
-		resp.ResponseHeader = types.JSONHeader{
-			ErrMessage: err,
-			Code:       http.StatusInternalServerError,
-		}
-		c.JSON(resp.ResponseHeader.Code, resp)
-		return
+		log.Error().Stack().Err(err)
+		return data, http.StatusInternalServerError, err
 	}
-	c.JSON(resp.ResponseHeader.Code, resp)
 	return
 }
 
 {{- if .IDExists}}
 // get {{.Name}} by ID
-func (r *apiRouter) getByID(c *gin.Context) { 
-	var (
-		id types.ParamID{{.IDType}}
-		err    error
-		resp   = types.JSONResponse{
-			ResponseHeader: types.JSONHeader{
-				Code: http.StatusOK,
-			},
-		}
-	)
-
+func (r *apiRouter) getByID(c *gin.Context) (data interface{}, httpCode int, err error){
+	var id types.ParamID{{.IDType}}
 	if err = c.ShouldBindUri(&id); err != nil {
 		log.Error().Stack().Err(err)
-		resp.ResponseHeader = types.JSONHeader{
-			ErrMessage: err,
-			Code:       http.StatusBadRequest,
-		}
-		c.JSON(resp.ResponseHeader.Code, resp)
-		return
+		return nil, http.StatusBadRequest, err
 	}
 
-	resp.ResponseBody, _, err = r.{{.Name}}Case.GetByID(c, id.ID)
+	data, _, err = r.{{.Name}}Case.GetByID(c, id.ID)
 	if err != nil {
-		resp.ResponseHeader = types.JSONHeader{
-			ErrMessage: err,
-			Code:       http.StatusInternalServerError,
-		}
-		c.JSON(resp.ResponseHeader.Code, resp)
-		return
+		log.Error().Stack().Err(err)
+		return data, http.StatusInternalServerError, err
 	}
-	c.JSON(resp.ResponseHeader.Code, resp)
 	return
 }
 {{- end}}
 
 // submit new {{.Name}}
-func (r *apiRouter) submit(c *gin.Context) {
-	var (
-		payload types.{{.Name}}Entity
-		err  error
-		resp = types.JSONResponse{
-			ResponseHeader: types.JSONHeader{
-				Code: http.StatusOK,
-			},
-		}
-	)
-	err = c.Bind(payload)
-	if err != nil {
+func (r *apiRouter) submit(c *gin.Context) (data interface{}, httpCode int, err error){
+	var payload types.{{.Name}}Entity
+	if err = c.Bind(payload); err != nil {
 		log.Error().Stack().Err(err)
-		resp.ResponseHeader = types.JSONHeader{
-			ErrMessage: err,
-			Code:       http.StatusBadRequest,
-		}
-		c.JSON(resp.ResponseHeader.Code, resp)
-		return
+		return nil, http.StatusBadRequest, err
 	}
-	
+
 	err = r.{{.Name}}Case.Submit(c, payload)
 	if err != nil {
 		log.Error().Stack().Err(err)
-		resp.ResponseHeader = types.JSONHeader{
-			ErrMessage: err,
-			Code:       http.StatusBadRequest,
-		}
-		c.JSON(resp.ResponseHeader.Code, resp)
-		return
+		return nil, http.StatusInternalServerError, err
 	}
-	c.JSON(resp.ResponseHeader.Code, resp)
 	return
 }
 
@@ -132,6 +74,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"{{.ProjectPath}}/internal/model/config"
 	"{{.ProjectPath}}/internal/usecase"
+	"{{.ProjectPath}}/internal/usecase"
+	"{{.ProjectPath}}/internal/delivery/helper"
 	"{{.ProjectPath}}/internal/usecase/util"
 )
 
@@ -145,16 +89,17 @@ func InitRoute(cfg *config.Config, group *gin.RouterGroup, uc *util.UseCaseWrapp
 		cfg:           cfg,
 		{{.Name}}Case: uc.{{.Name}}UseCase,
 	}
-	r.Register(group)
+	r.Register(helper.NewMiddleware(cfg, group))
 }
 
-func (r *apiRouter) Register(rg *gin.RouterGroup) {
-	rg.POST("/submit", r.submit)
-	rg.GET("/list", r.getList)
+func (r *apiRouter) Register(m helper.Middleware) {
+	m.POST("/submit", r.submit)
+	m.GET("/list", r.getList)	
 	{{- if .IDExists}}
-	rg.GET("/get/:id", r.getByID)
+	m.GET("/get/:id", r.getByID)
 	{{- end}}
 }
+
 {{end}}`
 
 	templateApiInit = `
@@ -175,7 +120,7 @@ import (
 func (d *APIDelivery) initRoutingGroup() {
 	{{range .StructNameList}}	
 	group{{.}} := d.Router.Group("/{{.}}")
-	{{.}}.InitRoute(d.cfg, group{{.}}, d.caseWrapper)
+	{{.}}API.InitRoute(d.cfg, group{{.}}, d.caseWrapper)
 	{{end}}
 }
 {{end}}`
@@ -304,7 +249,7 @@ func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types
 	defer span.End()
 	defer span.RecordError(err)
 
-	err = c.repo{{.Name}}.GetByID(ctx, id)
+	data, found, err = c.repo{{.Name}}.GetByID(ctx, id)
 	if err != nil {
 		log.Error().Stack().Err(err)
 	}
@@ -316,7 +261,7 @@ func (c *{{.Name}}Case) UpdateByID(ctx context.Context, data types.{{.Name}}Enti
 	defer span.End()
 	defer span.RecordError(err)
 
-	data, found, err = c.repo{{.Name}}.UpdateByID(ctx, data)
+	err = c.repo{{.Name}}.UpdateByID(ctx, data)
 	if err != nil {
 		log.Error().Stack().Err(err)
 	}
