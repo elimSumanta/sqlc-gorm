@@ -22,7 +22,7 @@ func (r *apiRouter) getList(c *gin.Context) (data interface{}, httpCode int, err
 		return nil, http.StatusBadRequest, err
 	}
 	
-	data, err = r.{{.Name}}Case.GetListWithFilter(ctx, filter)
+	data, err = r.{{.Name}}Case.GetListWithFilter(c, filter)
 	if err != nil {
 		log.Error().Stack().Err(err)
 		return data, http.StatusInternalServerError, err
