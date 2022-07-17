@@ -89,7 +89,7 @@ func InitRoute(cfg *config.Config, group *gin.RouterGroup, uc *util.UseCaseWrapp
 		cfg:           cfg,
 		{{.Name}}Case: uc.{{.Name}}UseCase,
 	}
-	r.Register(helper.NewMiddleware(cfg, group))
+	r.Register(helper.NewMiddleware(cfg, group, uc.Auth))
 }
 
 func (r *apiRouter) Register(m helper.Middleware) {
