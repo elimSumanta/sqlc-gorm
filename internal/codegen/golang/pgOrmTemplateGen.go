@@ -51,7 +51,7 @@ func (r *apiRouter) getByID(c *gin.Context) (data interface{}, httpCode int, err
 // submit new {{.Name}}
 func (r *apiRouter) submit(c *gin.Context) (data interface{}, httpCode int, err error){
 	var payload types.{{.Name}}Entity
-	if err = c.Bind(payload); err != nil {
+	if err = c.BindJSON(&payload); err != nil {
 		log.Error().Stack().Err(err)
 		return nil, http.StatusBadRequest, err
 	}
