@@ -230,7 +230,9 @@ func (c *{{.Name}}Case) GetListWithFilter(ctx context.Context, filter types.Data
 	defer span.End()
 	defer span.RecordError(err)
 	var tableInfo types.DataTableAttribute
-
+	if filter.Limit == 0 {
+		filter.Limit = 10
+	}
 	data.Data, tableInfo, err = c.repo{{.Name}}.GetListByFilter(ctx, filter)
 	lib.GetDataTableVal(filter, &tableInfo)
 	data.ItemCount = tableInfo.ItemCount
@@ -329,6 +331,9 @@ type {{.Name}}Entity struct {
 	{{- end}}
 	{{- if .NoUpdatedAt}}
 	UpdatedAt time.Time {{$.Q}}form:"-" gorm:"autoCreateTime:false" json:"-"{{$.Q}}
+	{{- end}}
+	{{- if .NoDeletedAt}}
+	DeletedAt time.Time {{$.Q}}form:"-" gorm:"autoCreateTime:false" json:"-"{{$.Q}}
 	{{- end}}
 }
 

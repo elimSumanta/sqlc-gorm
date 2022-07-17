@@ -116,6 +116,9 @@ func buildStructs(r *compiler.Result, settings config.CombinedSettings) []Struct
 				if column.Name == "updated_at" {
 					s.UpdatedAtExists = true
 				}
+				if column.Name == "deleted_at" {
+					s.DeletedAtExists = true
+				}
 
 				if colType == "time.Time" {
 					s.ImportList["t"] = "time"

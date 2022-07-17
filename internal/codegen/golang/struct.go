@@ -17,6 +17,7 @@ type Struct struct {
 	IDExists        bool
 	CreatedAtExists bool
 	UpdatedAtExists bool
+	DeletedAtExists bool
 	IDType          string
 	ImportList      map[string]string
 }
