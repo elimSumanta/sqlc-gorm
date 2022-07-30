@@ -18,13 +18,13 @@ import (
 func (r *apiRouter) getList(c *gin.Context) (data interface{}, httpCode int, err error){
 	var filter types.DataTableCommonFilter
 	if err := c.ShouldBind(&filter); err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}.getList - ShouldBind")
 		return nil, http.StatusBadRequest, err
 	}
 	
 	data, err = r.{{.Name}}Case.GetListWithFilter(c, filter)
 	if err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}.getList - GetListWithFilter")
 		return data, http.StatusInternalServerError, err
 	}
 	return
@@ -35,13 +35,13 @@ func (r *apiRouter) getList(c *gin.Context) (data interface{}, httpCode int, err
 func (r *apiRouter) getByID(c *gin.Context) (data interface{}, httpCode int, err error){
 	var id types.ParamID{{.IDType}}
 	if err = c.ShouldBindUri(&id); err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}.getByID - ShouldBindUri")
 		return nil, http.StatusBadRequest, err
 	}
 
 	data, _, err = r.{{.Name}}Case.GetByID(c, id.ID)
 	if err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}.getByID - GetByID")
 		return data, http.StatusInternalServerError, err
 	}
 	return
@@ -52,13 +52,13 @@ func (r *apiRouter) getByID(c *gin.Context) (data interface{}, httpCode int, err
 func (r *apiRouter) submit(c *gin.Context) (data interface{}, httpCode int, err error){
 	var payload types.{{.Name}}Entity
 	if err = c.BindJSON(&payload); err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}.submit - BindJSON")
 		return nil, http.StatusBadRequest, err
 	}
 
 	err = r.{{.Name}}Case.Submit(c, payload)
 	if err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}.submit - Submit")
 		return nil, http.StatusInternalServerError, err
 	}
 	return
@@ -204,7 +204,7 @@ func (c *{{.Name}}Case) Submit(ctx context.Context, data types.{{.Name}}Entity) 
 
 	err = c.repo{{.Name}}.Submit(ctx, data)
 	if err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}Case.Submit - Submit")
 	}
 	return
 }
@@ -217,7 +217,7 @@ func (c *{{.Name}}Case) SubmitMultiple(ctx context.Context, data []types.{{.Name
 	if len(data) > 0 {
 		err = c.repo{{.Name}}.SubmitMultiple(ctx, data)
 		if err != nil {
-			log.Error().Stack().Err(err)
+			log.Error().Stack().Err(err).Msg("{{.Name}}Case.SubmitMultiple - SubmitMultiple")
 		}
 	}else{
 		err = errors.New("data input is empty")
@@ -253,7 +253,7 @@ func (c *{{.Name}}Case) GetByID(ctx context.Context, id {{.IDType}}) (data types
 
 	data, found, err = c.repo{{.Name}}.GetByID(ctx, id)
 	if err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}Case.GetByID - repo{{.Name}}.GetByID")
 	}
 	return
 }
@@ -265,7 +265,7 @@ func (c *{{.Name}}Case) UpdateByID(ctx context.Context, data types.{{.Name}}Enti
 
 	err = c.repo{{.Name}}.UpdateByID(ctx, data)
 	if err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("{{.Name}}Case.UpdateByID - repo{{.Name}}.UpdateByID")
 	}
 	return
 }
@@ -297,7 +297,7 @@ func InitRepo(cfg *config.Config) *RepositoryWrapper {
 	// init postgre-sql
 	DBWrapper, err := postgre.InitDB(ctx, cfg)
 	if err != nil {
-		log.Error().Stack().Err(err)
+		log.Error().Stack().Err(err).Msg("util.InitRepo - InitDB")
 		return nil, err
 	}
 	
@@ -418,7 +418,7 @@ func (d *{{.Name}}Data) Submit(ctx context.Context, data types.{{.Name}}Entity) 
 			tx.Rollback()
 		}
 		if err != nil {
-			log.Error().Stack().Err(err)
+			log.Error().Stack().Err(err).Msg("{{.Name}}Data.Submit")
 		}
 	}()
 
@@ -446,7 +446,7 @@ func (d *{{.Name}}Data) SubmitMultiple(ctx context.Context, data []types.{{.Name
 			tx.Rollback()
 		}
 		if err != nil {
-			log.Error().Stack().Err(err)
+			log.Error().Stack().Err(err).Msg("{{.Name}}Data.SubmitMultiple")
 		}
 	}()
 
@@ -490,7 +490,7 @@ func (d *{{.Name}}Data) UpdateByID(ctx context.Context, data types.{{.Name}}Enti
 			tx.Rollback()
 		}
 		if err != nil {
-			log.Error().Stack().Err(err)
+			log.Error().Stack().Err(err).Msg("{{.Name}}Data.UpdateByID")
 		}
 	}()
 
