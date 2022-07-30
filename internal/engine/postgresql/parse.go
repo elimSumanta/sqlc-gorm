@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	pg "github.com/lfittl/pg_query_go"
-	nodes "github.com/lfittl/pg_query_go/nodes"
+	pg "github.com/pganalyze/pg_query_go"
+	nodes "github.com/pganalyze/pg_query_go/nodes"
 
 	"github.com/ujunglangit-id/sqlc/internal/metadata"
 	"github.com/ujunglangit-id/sqlc/internal/sql/ast"

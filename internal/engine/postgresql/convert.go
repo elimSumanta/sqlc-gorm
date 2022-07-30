@@ -1,7 +1,7 @@
 package postgresql
 
 import (
-	nodes "github.com/lfittl/pg_query_go/nodes"
+	nodes "github.com/pganalyze/pg_query_go/nodes"
 
 	"github.com/ujunglangit-id/sqlc/internal/sql/ast"
 )
