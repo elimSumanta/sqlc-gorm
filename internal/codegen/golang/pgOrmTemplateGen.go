@@ -14,7 +14,18 @@ import (
 	"net/http"
 )
 
-// get {{.Name}} by filter
+// Show{{.Name}} godoc
+// @Summary      get {{.Name}} by filter
+// @Description  get {{.Name}} by filter
+// @Tags         {{.Name}}
+// @Accept       json
+// @Produce      json
+// @Param        Param{{.Name}} query types.DataTableCommonFilter  false  "{{.Name}}filter"
+// @Success      200  {object}  types.{{.Name}}Entity
+// @Failure      400  {object}  types.JSONResponse
+// @Failure      401  {object}  types.JSONResponse
+// @Failure      500  {object}  types.JSONResponse
+// @Router       /{{.Name}}/list [get]
 func (r *apiRouter) getList(c *gin.Context) (data interface{}, httpCode int, err error){
 	var filter types.DataTableCommonFilter
 	if err := c.ShouldBind(&filter); err != nil {
@@ -31,7 +42,18 @@ func (r *apiRouter) getList(c *gin.Context) (data interface{}, httpCode int, err
 }
 
 {{- if .IDExists}}
-// get {{.Name}} by ID
+// Show{{.Name}} godoc
+// @Summary      get {{.Name}} by ID
+// @Description  get {{.Name}} by ID
+// @Tags         {{.Name}}
+// @Accept       json
+// @Produce      json
+// @Param        id path {{.IDType}} true  "filter data"
+// @Success      200  {object}  types.{{.Name}}Entity
+// @Failure      400  {object}  types.JSONResponse
+// @Failure      401  {object}  types.JSONResponse
+// @Failure      500  {object}  types.JSONResponse
+// @Router       /{{.Name}}/get/{id} [get]
 func (r *apiRouter) getByID(c *gin.Context) (data interface{}, httpCode int, err error){
 	var id types.ParamID{{.IDType}}
 	if err = c.ShouldBindUri(&id); err != nil {
@@ -48,7 +70,19 @@ func (r *apiRouter) getByID(c *gin.Context) (data interface{}, httpCode int, err
 }
 {{- end}}
 
-// submit new {{.Name}}
+// {{.Name}} godoc
+// @Summary      submit new {{.Name}}
+// @Description  submit new {{.Name}}
+// @Tags         {{.Name}}
+// @ID         	 {{.Name}}
+// @Accept       json
+// @Produce      json
+// @Param        {{.Name}} body types.{{.Name}}Entity  true  "{{.Name}} Data"
+// @Success      200  {object}  types.JSONResponse
+// @Failure      400  {object}  types.JSONResponse
+// @Failure      401  {object}  types.JSONResponse
+// @Failure      500  {object}  types.JSONResponse
+// @Router       /{{.Name}}/submit [post]
 func (r *apiRouter) submit(c *gin.Context) (data interface{}, httpCode int, err error){
 	var payload types.{{.Name}}Entity
 	if err = c.BindJSON(&payload); err != nil {
