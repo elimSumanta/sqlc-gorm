@@ -21,6 +21,8 @@ import (
 // @Accept       json
 // @Produce      json
 // @Param        Param{{.Name}} query types.DataTableCommonFilter  false  "{{.Name}}filter"
+// @param    x-auth header string true "User auth UUID"
+// @param    x-module-uid header string true "Source module UUID”
 // @Success      200  {object}  types.{{.Name}}Entity
 // @Failure      400  {object}  types.JSONResponse
 // @Failure      401  {object}  types.JSONResponse
@@ -49,6 +51,8 @@ func (r *apiRouter) getList(c *gin.Context) (data interface{}, httpCode int, err
 // @Accept       json
 // @Produce      json
 // @Param        id path {{.IDType}} true  "filter data"
+// @param    x-auth header string true "User auth UUID"
+// @param    x-module-uid header string true "Source module UUID”
 // @Success      200  {object}  types.{{.Name}}Entity
 // @Failure      400  {object}  types.JSONResponse
 // @Failure      401  {object}  types.JSONResponse
@@ -78,6 +82,8 @@ func (r *apiRouter) getByID(c *gin.Context) (data interface{}, httpCode int, err
 // @Accept       json
 // @Produce      json
 // @Param        {{.Name}} body types.{{.Name}}Entity  true  "{{.Name}} Data"
+// @param    x-auth header string true "User auth UUID"
+// @param    x-module-uid header string true "Source module UUID”
 // @Success      200  {object}  types.JSONResponse
 // @Failure      400  {object}  types.JSONResponse
 // @Failure      401  {object}  types.JSONResponse
